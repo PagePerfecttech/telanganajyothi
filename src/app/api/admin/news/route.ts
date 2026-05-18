@@ -13,14 +13,14 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
 
     const where: Record<string, unknown> = { deletedAt: null }
-    if (status) where.status = status
-    if (categoryId) where.categoryId = categoryId
-    if (districtId) where.districtId = districtId
-    if (priority) where.priority = priority
+    if (status && status !== 'all') where.status = status
+    if (categoryId && categoryId !== 'all') where.categoryId = categoryId
+    if (districtId && districtId !== 'all') where.districtId = districtId
+    if (priority && priority !== 'all') where.priority = priority
     if (search) {
       where.OR = [
-        { titleEn: { contains: search } },
-        { titleTe: { contains: search } },
+        { title: { contains: search } },
+        { shortDesc: { contains: search } },
       ]
     }
 
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       db.news.findMany({
         where,
         include: {
-          category: { select: { nameEn: true, nameTe: true, color: true } },
+          category: { select: { name: true, color: true } },
           state: { select: { name: true } },
           district: { select: { name: true } },
           reporter: { select: { name: true } },
@@ -42,13 +42,9 @@ export async function GET(request: NextRequest) {
       db.news.count({ where }),
     ])
 
-    // Return simplified response with single fields
     const simplified = news.map(n => ({
       ...n,
-      title: n.titleEn,
-      shortDesc: n.shortDescEn,
-      content: n.contentEn,
-      category: n.category ? { ...n.category, name: n.category.nameEn } : n.category,
+      imagesUrls: JSON.parse(n.imagesUrls || '[]'),
     }))
 
     return NextResponse.json({ news: simplified, total, page, limit })
@@ -62,11 +58,6 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
 
-    // Accept single `title`/`shortDesc`/`content` and store in both En/Te
-    const title = data.title || data.titleEn || ''
-    const shortDesc = data.shortDesc || data.shortDescEn || ''
-    const content = data.content || data.contentEn || ''
-
     // Get Telangana state ID if not provided
     let stateId = data.stateId
     if (!stateId) {
@@ -76,12 +67,9 @@ export async function POST(request: NextRequest) {
 
     const news = await db.news.create({
       data: {
-        titleEn: title,
-        titleTe: data.titleTe || title,
-        shortDescEn: shortDesc || null,
-        shortDescTe: data.shortDescTe || shortDesc || null,
-        contentEn: content || null,
-        contentTe: data.contentTe || content || null,
+        title: data.title || '',
+        shortDesc: data.shortDesc || null,
+        content: data.content || null,
         categoryId: data.categoryId,
         stateId: stateId,
         districtId: data.districtId || null,
@@ -117,12 +105,12 @@ export async function POST(request: NextRequest) {
           action: 'create',
           entity: 'news',
           entityId: news.id,
-          changes: JSON.stringify({ title }),
+          changes: JSON.stringify({ title: data.title }),
         },
       })
     }
 
-    return NextResponse.json(news, { status: 201 })
+    return NextResponse.json({ ...news, imagesUrls: JSON.parse(news.imagesUrls || '[]') }, { status: 201 })
   } catch (error) {
     console.error('News create error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

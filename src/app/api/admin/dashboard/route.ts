@@ -37,7 +37,7 @@ export async function GET() {
 
     const newsByCategoryData = newsByCategory.map((item) => ({
       categoryId: item.categoryId,
-      categoryName: categoryMap[item.categoryId]?.nameEn || 'Unknown',
+      categoryName: categoryMap[item.categoryId]?.name || 'Unknown',
       count: item._count.id,
     }))
 

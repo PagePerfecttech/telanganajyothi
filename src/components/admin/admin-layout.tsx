@@ -10,10 +10,14 @@ import { Separator } from '@/components/ui/separator'
 import {
   LayoutDashboard,
   Newspaper,
+  Video,
   MapPin,
   FolderOpen,
+  Tag,
   Megaphone,
   Users,
+  UserCog,
+  Contact,
   Bell,
   Settings,
   Image,
@@ -24,13 +28,17 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 
-const navItems: { id: ViewType; label: string; icon: React.ElementType }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'news', label: 'News Management', icon: Newspaper },
-  { id: 'locations', label: 'Locations', icon: MapPin },
+const navItems: { id: ViewType; label: string; icon: React.ElementType; section?: string }[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, section: 'Overview' },
+  { id: 'news', label: 'News Management', icon: Newspaper, section: 'Content' },
+  { id: 'videos', label: 'Videos', icon: Video },
   { id: 'categories', label: 'Categories', icon: FolderOpen },
-  { id: 'ads', label: 'Custom Ads', icon: Megaphone },
+  { id: 'tags', label: 'Tags', icon: Tag },
+  { id: 'locations', label: 'Locations', icon: MapPin, section: 'Management' },
+  { id: 'ads', label: 'Ads Management', icon: Megaphone },
   { id: 'reporters', label: 'Reporters', icon: Users },
+  { id: 'users', label: 'App Users', icon: Contact },
+  { id: 'admins', label: 'Admin Users', icon: UserCog, section: 'System' },
   { id: 'notifications', label: 'Push Notifications', icon: Bell },
   { id: 'settings', label: 'Settings', icon: Settings },
   { id: 'media', label: 'Media Library', icon: Image },
@@ -60,26 +68,35 @@ function SidebarNav({
         )}
       </div>
       <ScrollArea className="flex-1 py-2">
-        <nav className="space-y-1 px-2">
-          {navItems.map((item) => {
+        <nav className="space-y-0.5 px-2">
+          {navItems.map((item, idx) => {
             const Icon = item.icon
             const isActive = activeView === item.id
             return (
-              <button
-                key={item.id}
-                onClick={() => onViewChange(item.id)}
-                className={cn(
-                  'w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-red-600 text-white shadow-md'
-                    : 'text-gray-300 hover:bg-white/10 hover:text-white',
-                  collapsed && 'justify-center px-2'
+              <div key={item.id}>
+                {item.section && !collapsed && (
+                  <div className={cn(
+                    'px-3 pt-4 pb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider',
+                    idx === 0 && 'pt-1'
+                  )}>
+                    {item.section}
+                  </div>
                 )}
-                title={collapsed ? item.label : undefined}
-              >
-                <Icon className="h-5 w-5 flex-shrink-0" />
-                {!collapsed && <span>{item.label}</span>}
-              </button>
+                <button
+                  onClick={() => onViewChange(item.id)}
+                  className={cn(
+                    'w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-red-600 text-white shadow-md'
+                      : 'text-gray-300 hover:bg-white/10 hover:text-white',
+                    collapsed && 'justify-center px-2'
+                  )}
+                  title={collapsed ? item.label : undefined}
+                >
+                  <Icon className="h-4 w-4 flex-shrink-0" />
+                  {!collapsed && <span>{item.label}</span>}
+                </button>
+              </div>
             )
           })}
         </nav>

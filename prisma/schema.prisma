@@ -54,8 +54,7 @@ model District {
 
 model Category {
   id        String    @id @default(cuid())
-  nameEn    String    @map("name_en")
-  nameTe    String    @map("name_te")
+  name      String
   slug      String    @unique
   iconUrl   String?   @map("icon_url")
   color     String?
@@ -184,12 +183,9 @@ model User {
 
 model News {
   id             String    @id @default(cuid())
-  titleEn        String    @map("title_en")
-  titleTe        String    @map("title_te")
-  shortDescEn    String?   @map("short_desc_en")
-  shortDescTe    String?   @map("short_desc_te")
-  contentEn      String?   @map("content_en")
-  contentTe      String?   @map("content_te")
+  title          String
+  shortDesc      String?   @map("short_desc")
+  content        String?
   categoryId     String    @map("category_id")
   stateId        String    @map("state_id")
   districtId     String?   @map("district_id")

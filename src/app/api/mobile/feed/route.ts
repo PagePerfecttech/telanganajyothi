@@ -8,7 +8,6 @@ export async function GET(request: NextRequest) {
     const categoryId = searchParams.get('category_id')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
-    const lang = request.headers.get('accept-language')?.startsWith('te') ? 'te' : 'en'
 
     const where: Record<string, unknown> = {
       status: 'published',
@@ -23,15 +22,13 @@ export async function GET(request: NextRequest) {
         where,
         select: {
           id: true,
-          titleEn: true,
-          titleTe: true,
-          shortDescEn: true,
-          shortDescTe: true,
+          title: true,
+          shortDesc: true,
           thumbnailUrl: true,
           priority: true,
           publishedAt: true,
           viewsCount: true,
-          category: { select: { nameEn: true, nameTe: true, slug: true, color: true } },
+          category: { select: { name: true, slug: true, color: true } },
           district: { select: { name: true } },
         },
         orderBy: [{ priority: 'desc' }, { publishedAt: 'desc' }],
@@ -41,7 +38,7 @@ export async function GET(request: NextRequest) {
       db.news.count({ where }),
     ])
 
-    // Get feed_inline ads
+    // Get feed_inline ads with their frequency setting
     const ads = await db.customAd.findMany({
       where: {
         placement: 'feed_inline',
@@ -50,30 +47,28 @@ export async function GET(request: NextRequest) {
         startDate: { lte: new Date() },
         endDate: { gte: new Date() },
       },
-      take: 2,
+      take: 3,
     })
 
+    // Use the first ad's frequency, default to 5
+    const adFrequency = ads.length > 0 ? (ads[0].frequency || 5) : 5
+
     const feed = news.map((item, index) => {
-      if ((index + 1) % 5 === 0 && ads.length > 0) {
+      if ((index + 1) % adFrequency === 0 && ads.length > 0) {
         const ad = ads[index % ads.length]
         return {
           type: 'ad',
           ad: {
             ...ad,
-            imagesUrls: JSON.parse(ad.imagesUrls),
-            targetStateIds: JSON.parse(ad.targetStateIds),
-            targetCategoryIds: JSON.parse(ad.targetCategoryIds),
+            imagesUrls: JSON.parse(ad.imagesUrls || '[]'),
+            targetStateIds: JSON.parse(ad.targetStateIds || '[]'),
+            targetCategoryIds: JSON.parse(ad.targetCategoryIds || '[]'),
           },
         }
       }
       return {
         type: 'news',
-        news: {
-          ...item,
-          title: lang === 'te' ? item.titleTe : item.titleEn,
-          shortDesc: lang === 'te' ? item.shortDescTe : item.shortDescEn,
-          categoryName: lang === 'te' ? item.category.nameTe : item.category.nameEn,
-        },
+        news: item,
       }
     })
 

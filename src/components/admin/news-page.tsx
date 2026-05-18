@@ -15,25 +15,30 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Search, CheckCircle, XCircle, Upload, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, CheckCircle, XCircle, Upload, X, ImageIcon } from 'lucide-react'
 
 interface NewsItem {
   id: string
   title: string
+  shortDesc: string | null
   status: string
   priority: string
   createdAt: string
   publishedAt: string | null
   viewsCount: number
   thumbnailUrl: string
+  imagesUrls: string[]
+  videoUrl: string | null
   category: { name: string; color: string }
   district: { name: string } | null
   reporter: { name: string } | null
+  tags: { tag: { name: string; slug: string } }[]
 }
 
 interface Category { id: string; name: string }
 interface District { id: string; name: string }
 interface Reporter { id: string; name: string }
+interface Tag { id: string; name: string; slug: string; type: string }
 
 const statusColors: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
@@ -62,6 +67,7 @@ export default function NewsPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [districts, setDistricts] = useState<District[]>([])
   const [reporters, setReporters] = useState<Reporter[]>([])
+  const [tags, setTags] = useState<Tag[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editItemId, setEditItemId] = useState<string | null>(null)
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
@@ -76,9 +82,9 @@ export default function NewsPage() {
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) })
       if (search) params.set('search', search)
-      if (filterStatus) params.set('status', filterStatus)
-      if (filterCategory) params.set('categoryId', filterCategory)
-      if (filterPriority) params.set('priority', filterPriority)
+      if (filterStatus && filterStatus !== 'all') params.set('status', filterStatus)
+      if (filterCategory && filterCategory !== 'all') params.set('categoryId', filterCategory)
+      if (filterPriority && filterPriority !== 'all') params.set('priority', filterPriority)
       if (activeTab === 'pending') params.set('status', 'pending_review')
 
       const res = await fetch(`/api/admin/news?${params}`)
@@ -96,6 +102,7 @@ export default function NewsPage() {
     fetchCategories()
     fetchDistricts()
     fetchReporters()
+    fetchTags()
   }, [])
 
   useEffect(() => {
@@ -113,6 +120,10 @@ export default function NewsPage() {
   const fetchReporters = async () => {
     const res = await fetch('/api/admin/reporters')
     setReporters(await res.json())
+  }
+  const fetchTags = async () => {
+    const res = await fetch('/api/admin/tags')
+    setTags(await res.json())
   }
 
   const handleSave = async (formData: Record<string, unknown>) => {
@@ -260,7 +271,17 @@ export default function NewsPage() {
                           <div className="w-10 h-10 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">N</div>
                         )}
                       </TableCell>
-                      <TableCell className="font-medium max-w-[300px] truncate">{item.title}</TableCell>
+                      <TableCell>
+                        <div className="font-medium max-w-[300px] truncate">{item.title}</div>
+                        {item.tags?.length > 0 && (
+                          <div className="flex gap-1 mt-1">
+                            {item.tags.slice(0, 3).map(t => (
+                              <span key={t.slug} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">{t.tag.name}</span>
+                            ))}
+                            {item.tags.length > 3 && <span className="text-[10px] text-muted-foreground">+{item.tags.length - 3}</span>}
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" style={{ borderColor: item.category?.color, color: item.category?.color }}>
                           {item.category?.name}
@@ -330,6 +351,7 @@ export default function NewsPage() {
         categories={categories}
         districts={districts}
         reporters={reporters}
+        tags={tags}
         currentUser={currentUser}
       />
 
@@ -352,7 +374,7 @@ export default function NewsPage() {
 }
 
 function NewsFormDialog({
-  editItemId, open, onOpenChange, onSave, categories, districts, reporters, currentUser,
+  editItemId, open, onOpenChange, onSave, categories, districts, reporters, tags, currentUser,
 }: {
   editItemId: string | null
   open: boolean
@@ -361,14 +383,16 @@ function NewsFormDialog({
   categories: Category[]
   districts: District[]
   reporters: Reporter[]
+  tags: Tag[]
   currentUser: { id: string; name: string; role: string } | null
 }) {
   const [form, setForm] = useState<Record<string, unknown>>({
     title: '', shortDesc: '', content: '', categoryId: '', districtId: '',
-    thumbnailUrl: '', videoUrl: '', sourceType: 'original', reporterId: '',
-    priority: 'normal', status: 'draft', isFeatured: false,
+    thumbnailUrl: '', imagesUrls: [] as string[], videoUrl: '', sourceType: 'original', reporterId: '',
+    priority: 'normal', status: 'draft', isFeatured: false, tagIds: [] as string[],
   })
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false)
+  const [uploadingImages, setUploadingImages] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
   // Load edit data when dialog opens
@@ -378,18 +402,20 @@ function NewsFormDialog({
         .then(r => r.json())
         .then(data => {
           setForm({
-            title: data.title || data.titleEn || '',
-            shortDesc: data.shortDesc || data.shortDescEn || '',
-            content: data.content || data.contentEn || '',
+            title: data.title || '',
+            shortDesc: data.shortDesc || '',
+            content: data.content || '',
             categoryId: data.categoryId || '',
             districtId: data.districtId || '',
             thumbnailUrl: data.thumbnailUrl || '',
+            imagesUrls: data.imagesUrls || [],
             videoUrl: data.videoUrl || '',
             sourceType: data.sourceType || 'original',
             reporterId: data.reporterId || '',
             priority: data.priority || 'normal',
             status: data.status || 'draft',
             isFeatured: data.isFeatured || false,
+            tagIds: data.tags?.map((t: { tag: { id: string } }) => t.tag.id) || [],
           })
           setLoaded(true)
         })
@@ -397,8 +423,8 @@ function NewsFormDialog({
     } else if (open && !editItemId) {
       setForm({
         title: '', shortDesc: '', content: '', categoryId: '', districtId: '',
-        thumbnailUrl: '', videoUrl: '', sourceType: 'original', reporterId: '',
-        priority: 'normal', status: 'draft', isFeatured: false,
+        thumbnailUrl: '', imagesUrls: [], videoUrl: '', sourceType: 'original', reporterId: '',
+        priority: 'normal', status: 'draft', isFeatured: false, tagIds: [],
       })
       setLoaded(true)
     }
@@ -420,12 +446,51 @@ function NewsFormDialog({
       const data = await res.json()
       if (data.url) {
         updateField('thumbnailUrl', data.url)
-        toast.success('Image uploaded')
+        toast.success('Thumbnail uploaded')
       }
     } catch {
       toast.error('Upload failed')
     } finally {
       setUploadingThumbnail(false)
+    }
+  }
+
+  const handleImagesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    setUploadingImages(true)
+    const currentImages = (form.imagesUrls as string[]) || []
+    try {
+      for (const file of Array.from(files)) {
+        if (currentImages.length >= 8) break
+        const formData = new FormData()
+        formData.append('file', file)
+        const res = await fetch('/api/admin/media/upload', { method: 'POST', body: formData })
+        const data = await res.json()
+        if (data.url) {
+          currentImages.push(data.url)
+        }
+      }
+      updateField('imagesUrls', [...currentImages])
+      toast.success('Images uploaded')
+    } catch {
+      toast.error('Upload failed')
+    } finally {
+      setUploadingImages(false)
+    }
+  }
+
+  const removeImage = (index: number) => {
+    const current = (form.imagesUrls as string[]) || []
+    updateField('imagesUrls', current.filter((_, i) => i !== index))
+  }
+
+  const toggleTag = (tagId: string) => {
+    const current = (form.tagIds as string[]) || []
+    if (current.includes(tagId)) {
+      updateField('tagIds', current.filter(id => id !== tagId))
+    } else {
+      updateField('tagIds', [...current, tagId])
     }
   }
 
@@ -546,6 +611,42 @@ function NewsFormDialog({
             )}
           </div>
 
+          {/* Additional Images Upload */}
+          <div className="space-y-2">
+            <Label>Additional Images (up to 8)</Label>
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer">
+                <Button type="button" variant="outline" size="sm" disabled={uploadingImages || (form.imagesUrls as string[]).length >= 8} asChild>
+                  <span>
+                    {uploadingImages ? (
+                      <div className="animate-spin h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full" />
+                    ) : (
+                      <ImageIcon className="h-4 w-4 mr-1" />
+                    )}
+                    Upload Images
+                  </span>
+                </Button>
+                <input type="file" accept="image/*" multiple className="hidden" onChange={handleImagesUpload} />
+              </label>
+              <span className="text-xs text-muted-foreground">{(form.imagesUrls as string[]).length}/8 images</span>
+            </div>
+            {(form.imagesUrls as string[]).length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {(form.imagesUrls as string[]).map((url, i) => (
+                  <div key={i} className="relative group">
+                    <img src={url} alt={`Image ${i + 1}`} className="h-16 w-24 object-cover rounded-lg border" />
+                    <button
+                      onClick={() => removeImage(i)}
+                      className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Video URL */}
           <div className="space-y-2">
             <Label>Video URL (optional)</Label>
@@ -576,6 +677,32 @@ function NewsFormDialog({
               </Select>
             </div>
           </div>
+
+          {/* Tags */}
+          {tags.length > 0 && (
+            <div className="space-y-2">
+              <Label>Tags</Label>
+              <div className="flex flex-wrap gap-2">
+                {tags.map(tag => {
+                  const selected = ((form.tagIds as string[]) || []).includes(tag.id)
+                  return (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => toggleTag(tag.id)}
+                      className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                        selected
+                          ? 'bg-red-50 border-red-300 text-red-700'
+                          : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      {tag.name}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Featured toggle */}
           <div className="flex items-center gap-3">

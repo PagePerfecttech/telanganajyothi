@@ -7,7 +7,6 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const lang = request.headers.get('accept-language')?.startsWith('te') ? 'te' : 'en'
 
     const news = await db.news.findUnique({
       where: { id, status: 'published', deletedAt: null },
@@ -38,17 +37,14 @@ export async function GET(
     return NextResponse.json({
       news: {
         ...news,
-        title: lang === 'te' ? news.titleTe : news.titleEn,
-        shortDesc: lang === 'te' ? news.shortDescTe : news.shortDescEn,
-        content: lang === 'te' ? news.contentTe : news.contentEn,
-        imagesUrls: JSON.parse(news.imagesUrls),
-        categoryName: lang === 'te' ? news.category.nameTe : news.category.nameEn,
+        imagesUrls: JSON.parse(news.imagesUrls || '[]'),
+        categoryName: news.category?.name,
       },
       ad: ad ? {
         ...ad,
-        imagesUrls: JSON.parse(ad.imagesUrls),
-        targetStateIds: JSON.parse(ad.targetStateIds),
-        targetCategoryIds: JSON.parse(ad.targetCategoryIds),
+        imagesUrls: JSON.parse(ad.imagesUrls || '[]'),
+        targetStateIds: JSON.parse(ad.targetStateIds || '[]'),
+        targetCategoryIds: JSON.parse(ad.targetCategoryIds || '[]'),
       } : null,
     })
   } catch (error) {

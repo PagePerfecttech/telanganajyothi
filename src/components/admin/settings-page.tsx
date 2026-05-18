@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Settings, Shield, Wrench, Bell, Moon, Video, Bookmark, Share, MessageSquare, Save } from 'lucide-react'
+import { Settings, Shield, Wrench, MessageSquare, Moon, Video, Bell, Bookmark, Share, Save } from 'lucide-react'
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Record<string, string>>({})
@@ -44,7 +44,7 @@ export default function SettingsPage() {
   }
 
   if (loading) {
-    return <div className="space-y-4">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-40 bg-muted animate-pulse rounded-xl" />)}</div>
+    return <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-40 bg-muted animate-pulse rounded-xl" />)}</div>
   }
 
   const featureFlags = [
@@ -136,27 +136,6 @@ export default function SettingsPage() {
             <Label>Maintenance Message</Label>
             <Textarea value={settings.maintenance_message || ''} onChange={e => updateSetting('maintenance_message', e.target.value)} placeholder="We'll be back shortly..." rows={2} />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* AdMob Settings */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2"><Bell className="h-5 w-5 text-red-600" /> AdMob Settings</CardTitle>
-          <CardDescription>Configure Google AdMob (also available in Ads tab)</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-            <div><Label className="font-medium">Enable AdMob</Label></div>
-            <Switch checked={settings.admob_enabled === 'true'} onCheckedChange={v => updateSetting('admob_enabled', String(v))} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2"><Label>Banner ID</Label><Input value={settings.admob_banner_id || ''} onChange={e => updateSetting('admob_banner_id', e.target.value)} /></div>
-            <div className="space-y-2"><Label>Interstitial ID</Label><Input value={settings.admob_interstitial_id || ''} onChange={e => updateSetting('admob_interstitial_id', e.target.value)} /></div>
-            <div className="space-y-2"><Label>Native ID</Label><Input value={settings.admob_native_id || ''} onChange={e => updateSetting('admob_native_id', e.target.value)} /></div>
-            <div className="space-y-2"><Label>Rewarded ID</Label><Input value={settings.admob_rewarded_id || ''} onChange={e => updateSetting('admob_rewarded_id', e.target.value)} /></div>
-          </div>
-          <div className="space-y-2"><Label>Frequency Cap</Label><Input type="number" value={settings.admob_frequency_cap || '5'} onChange={e => updateSetting('admob_frequency_cap', e.target.value)} /></div>
         </CardContent>
       </Card>
     </div>

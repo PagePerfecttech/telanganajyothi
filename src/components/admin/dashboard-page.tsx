@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useAppStore } from '@/lib/store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -24,6 +25,7 @@ interface DashboardData {
 const COLORS = ['#DC2626', '#7C3AED', '#059669', '#D97706', '#2563EB', '#0891B2', '#4F46E5', '#16A34A', '#65A30D', '#9333EA']
 
 export default function DashboardPage() {
+  const { setActiveView } = useAppStore()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -96,13 +98,17 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-3">
-        <Button className="bg-red-600 hover:bg-red-700">
+        <Button className="bg-red-600 hover:bg-red-700" onClick={() => setActiveView('news')}>
           <Plus className="h-4 w-4 mr-2" />
           Create Breaking News
         </Button>
-        <Button variant="outline">
+        <Button variant="outline" onClick={() => setActiveView('notifications')}>
           <Bell className="h-4 w-4 mr-2" />
           Send Push Notification
+        </Button>
+        <Button variant="outline" onClick={() => setActiveView('videos')}>
+          <Newspaper className="h-4 w-4 mr-2" />
+          Manage Videos
         </Button>
       </div>
 
