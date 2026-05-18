@@ -11,9 +11,11 @@ export async function GET(
     if (!ad) return NextResponse.json({ error: 'Ad not found' }, { status: 404 })
     return NextResponse.json({
       ...ad,
+      type: ad.type === 'image' ? 'poster' : ad.type,
       imagesUrls: JSON.parse(ad.imagesUrls),
       targetStateIds: JSON.parse(ad.targetStateIds),
       targetCategoryIds: JSON.parse(ad.targetCategoryIds),
+      frequency: ad.frequency || 5,
     })
   } catch (error) {
     console.error('Ad get error:', error)
@@ -28,17 +30,21 @@ export async function PUT(
   try {
     const { id } = await params
     const data = await request.json()
+    // Map 'poster' to 'image' for DB storage
+    const adType = data.type === 'poster' ? 'image' : data.type || 'image'
+
     const ad = await db.customAd.update({
       where: { id },
       data: {
         title: data.title,
         advertiser: data.advertiser,
-        type: data.type,
+        type: adType,
         imagesUrls: JSON.stringify(data.imagesUrls || []),
-        layout: data.layout,
+        layout: data.layout || 'grid',
         videoUrl: data.videoUrl || null,
         clickUrl: data.clickUrl || null,
         placement: data.placement,
+        frequency: data.frequency || 5,
         targetStateIds: JSON.stringify(data.targetStateIds || []),
         targetCategoryIds: JSON.stringify(data.targetCategoryIds || []),
         impressionsLimit: data.impressionsLimit,
@@ -47,7 +53,10 @@ export async function PUT(
         isActive: data.isActive,
       },
     })
-    return NextResponse.json(ad)
+    return NextResponse.json({
+      ...ad,
+      type: ad.type === 'image' ? 'poster' : ad.type,
+    })
   } catch (error) {
     console.error('Ad update error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

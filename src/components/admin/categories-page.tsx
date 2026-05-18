@@ -15,8 +15,7 @@ import { Plus, Pencil, Trash2, FolderOpen } from 'lucide-react'
 
 interface CategoryItem {
   id: string
-  nameEn: string
-  nameTe: string
+  name: string
   slug: string
   iconUrl: string | null
   color: string | null
@@ -31,7 +30,7 @@ export default function CategoriesPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editItem, setEditItem] = useState<CategoryItem | null>(null)
   const [form, setForm] = useState({
-    nameEn: '', nameTe: '', slug: '', iconUrl: '', color: '#DC2626', sortOrder: 0, isActive: true,
+    name: '', slug: '', iconUrl: '', color: '#DC2626', sortOrder: 0, isActive: true,
   })
 
   const fetchCategories = useCallback(async () => {
@@ -47,14 +46,14 @@ export default function CategoriesPage() {
 
   const openCreate = () => {
     setEditItem(null)
-    setForm({ nameEn: '', nameTe: '', slug: '', iconUrl: '', color: '#DC2626', sortOrder: categories.length, isActive: true })
+    setForm({ name: '', slug: '', iconUrl: '', color: '#DC2626', sortOrder: categories.length, isActive: true })
     setDialogOpen(true)
   }
 
   const openEdit = (item: CategoryItem) => {
     setEditItem(item)
     setForm({
-      nameEn: item.nameEn, nameTe: item.nameTe, slug: item.slug,
+      name: item.name, slug: item.slug,
       iconUrl: item.iconUrl || '', color: item.color || '#DC2626',
       sortOrder: item.sortOrder, isActive: item.isActive,
     })
@@ -116,8 +115,7 @@ export default function CategoriesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-8">#</TableHead>
-                    <TableHead>Name (EN)</TableHead>
-                    <TableHead>Name (TE)</TableHead>
+                    <TableHead>Name</TableHead>
                     <TableHead>Slug</TableHead>
                     <TableHead>Color</TableHead>
                     <TableHead>News</TableHead>
@@ -133,10 +131,9 @@ export default function CategoriesPage() {
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <FolderOpen className="h-4 w-4" style={{ color: cat.color || undefined }} />
-                          {cat.nameEn}
+                          {cat.name}
                         </div>
                       </TableCell>
-                      <TableCell>{cat.nameTe}</TableCell>
                       <TableCell><code className="text-xs bg-muted px-1.5 py-0.5 rounded">{cat.slug}</code></TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -166,12 +163,12 @@ export default function CategoriesPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>{editItem ? 'Edit Category' : 'Add Category'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Name (English)</Label><Input value={form.nameEn} onChange={e => setForm(p => ({ ...p, nameEn: e.target.value }))} /></div>
-              <div className="space-y-2"><Label>Name (Telugu)</Label><Input value={form.nameTe} onChange={e => setForm(p => ({ ...p, nameTe: e.target.value }))} /></div>
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input value={form.name} onChange={e => { setForm(p => ({ ...p, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '') })); }} placeholder="Category name" />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Slug</Label><Input value={form.slug} onChange={e => setForm(p => ({ ...p, slug: e.target.value.toLowerCase().replace(/\s+/g, '-') }))} /></div>
+              <div className="space-y-2"><Label>Slug</Label><Input value={form.slug} onChange={e => setForm(p => ({ ...p, slug: e.target.value }))} /></div>
               <div className="space-y-2">
                 <Label>Color</Label>
                 <div className="flex items-center gap-2">

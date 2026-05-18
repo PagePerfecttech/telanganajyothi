@@ -42,7 +42,16 @@ export async function GET(request: NextRequest) {
       db.news.count({ where }),
     ])
 
-    return NextResponse.json({ news, total, page, limit })
+    // Return simplified response with single fields
+    const simplified = news.map(n => ({
+      ...n,
+      title: n.titleEn,
+      shortDesc: n.shortDescEn,
+      content: n.contentEn,
+      category: n.category ? { ...n.category, name: n.category.nameEn } : n.category,
+    }))
+
+    return NextResponse.json({ news: simplified, total, page, limit })
   } catch (error) {
     console.error('News list error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -53,16 +62,28 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
 
+    // Accept single `title`/`shortDesc`/`content` and store in both En/Te
+    const title = data.title || data.titleEn || ''
+    const shortDesc = data.shortDesc || data.shortDescEn || ''
+    const content = data.content || data.contentEn || ''
+
+    // Get Telangana state ID if not provided
+    let stateId = data.stateId
+    if (!stateId) {
+      const telangana = await db.state.findFirst({ where: { code: 'TG' } })
+      stateId = telangana?.id || ''
+    }
+
     const news = await db.news.create({
       data: {
-        titleEn: data.titleEn,
-        titleTe: data.titleTe,
-        shortDescEn: data.shortDescEn || null,
-        shortDescTe: data.shortDescTe || null,
-        contentEn: data.contentEn || null,
-        contentTe: data.contentTe || null,
+        titleEn: title,
+        titleTe: data.titleTe || title,
+        shortDescEn: shortDesc || null,
+        shortDescTe: data.shortDescTe || shortDesc || null,
+        contentEn: content || null,
+        contentTe: data.contentTe || content || null,
         categoryId: data.categoryId,
-        stateId: data.stateId,
+        stateId: stateId,
         districtId: data.districtId || null,
         thumbnailUrl: data.thumbnailUrl || '',
         imagesUrls: JSON.stringify(data.imagesUrls || []),
@@ -89,15 +110,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Audit log
-    await db.auditLog.create({
-      data: {
-        adminId: data.createdBy,
-        action: 'create',
-        entity: 'news',
-        entityId: news.id,
-        changes: JSON.stringify({ title: data.titleEn }),
-      },
-    })
+    if (data.createdBy) {
+      await db.auditLog.create({
+        data: {
+          adminId: data.createdBy,
+          action: 'create',
+          entity: 'news',
+          entityId: news.id,
+          changes: JSON.stringify({ title }),
+        },
+      })
+    }
 
     return NextResponse.json(news, { status: 201 })
   } catch (error) {

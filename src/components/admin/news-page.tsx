@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAppStore } from '@/lib/store'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,26 +15,25 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Search, Eye, CheckCircle, XCircle, Filter } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, CheckCircle, XCircle, Upload, X } from 'lucide-react'
 
 interface NewsItem {
   id: string
-  titleEn: string
-  titleTe: string
+  title: string
   status: string
   priority: string
   createdAt: string
   publishedAt: string | null
   viewsCount: number
-  category: { nameEn: string; nameTe: string; color: string }
+  thumbnailUrl: string
+  category: { name: string; color: string }
   district: { name: string } | null
   reporter: { name: string } | null
 }
 
-interface Category { id: string; nameEn: string; nameTe: string }
+interface Category { id: string; name: string }
 interface District { id: string; name: string }
 interface Reporter { id: string; name: string }
-interface Tag { id: string; name: string; slug: string }
 
 const statusColors: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
@@ -63,9 +62,8 @@ export default function NewsPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [districts, setDistricts] = useState<District[]>([])
   const [reporters, setReporters] = useState<Reporter[]>([])
-  const [tags, setTags] = useState<Tag[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editItem, setEditItem] = useState<Record<string, unknown> | null>(null)
+  const [editItemId, setEditItemId] = useState<string | null>(null)
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [rejectId, setRejectId] = useState('')
   const [rejectReason, setRejectReason] = useState('')
@@ -98,7 +96,6 @@ export default function NewsPage() {
     fetchCategories()
     fetchDistricts()
     fetchReporters()
-    fetchTags()
   }, [])
 
   useEffect(() => {
@@ -117,15 +114,11 @@ export default function NewsPage() {
     const res = await fetch('/api/admin/reporters')
     setReporters(await res.json())
   }
-  const fetchTags = async () => {
-    const res = await fetch('/api/admin/categories')
-    // Tags will be fetched inline - using categories for now
-  }
 
   const handleSave = async (formData: Record<string, unknown>) => {
     try {
-      if (editItem) {
-        const res = await fetch(`/api/admin/news/${editItem.id}`, {
+      if (editItemId) {
+        const res = await fetch(`/api/admin/news/${editItemId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...formData, updatedBy: currentUser?.id }),
@@ -142,7 +135,7 @@ export default function NewsPage() {
         toast.success('News created successfully')
       }
       setDialogOpen(false)
-      setEditItem(null)
+      setEditItemId(null)
       fetchNews()
     } catch {
       toast.error('Failed to save news')
@@ -181,17 +174,6 @@ export default function NewsPage() {
     }
   }
 
-  const openEdit = async (item: NewsItem) => {
-    try {
-      const res = await fetch(`/api/admin/news/${item.id}`)
-      const data = await res.json()
-      setEditItem(data)
-      setDialogOpen(true)
-    } catch {
-      toast.error('Failed to load news')
-    }
-  }
-
   const totalPages = Math.ceil(total / limit)
 
   return (
@@ -201,7 +183,7 @@ export default function NewsPage() {
           <h1 className="text-2xl font-bold">News Management</h1>
           <p className="text-sm text-muted-foreground">{total} total articles</p>
         </div>
-        <Button className="bg-red-600 hover:bg-red-700" onClick={() => { setEditItem(null); setDialogOpen(true) }}>
+        <Button className="bg-red-600 hover:bg-red-700" onClick={() => { setEditItemId(null); setDialogOpen(true) }}>
           <Plus className="h-4 w-4 mr-2" /> Create News
         </Button>
       </div>
@@ -233,7 +215,7 @@ export default function NewsPage() {
           <SelectTrigger className="w-[150px]"><SelectValue placeholder="Category" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.nameEn}</SelectItem>)}
+            {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterPriority} onValueChange={setFilterPriority}>
@@ -257,6 +239,7 @@ export default function NewsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12"></TableHead>
                     <TableHead className="min-w-[250px]">Title</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>District</TableHead>
@@ -270,10 +253,17 @@ export default function NewsPage() {
                 <TableBody>
                   {news.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell className="font-medium max-w-[300px] truncate">{item.titleEn}</TableCell>
+                      <TableCell>
+                        {item.thumbnailUrl ? (
+                          <img src={item.thumbnailUrl} alt="" className="w-10 h-10 rounded object-cover bg-muted" />
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">N</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium max-w-[300px] truncate">{item.title}</TableCell>
                       <TableCell>
                         <Badge variant="outline" style={{ borderColor: item.category?.color, color: item.category?.color }}>
-                          {item.category?.nameEn}
+                          {item.category?.name}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm">{item.district?.name || '-'}</TableCell>
@@ -299,7 +289,7 @@ export default function NewsPage() {
                               </Button>
                             </>
                           )}
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(item)}>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditItemId(item.id); setDialogOpen(true) }}>
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={() => handleDelete(item.id)}>
@@ -310,7 +300,7 @@ export default function NewsPage() {
                     </TableRow>
                   ))}
                   {news.length === 0 && (
-                    <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No news found</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No news found</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -332,14 +322,15 @@ export default function NewsPage() {
 
       {/* Create/Edit Dialog */}
       <NewsFormDialog
-        key={editItem?.id || 'create'}
+        key={editItemId || 'create'}
+        editItemId={editItemId}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        editItem={editItem}
         onSave={handleSave}
         categories={categories}
         districts={districts}
         reporters={reporters}
+        currentUser={currentUser}
       />
 
       {/* Reject Dialog */}
@@ -361,94 +352,128 @@ export default function NewsPage() {
 }
 
 function NewsFormDialog({
-  open, onOpenChange, editItem, onSave, categories, districts, reporters,
+  editItemId, open, onOpenChange, onSave, categories, districts, reporters, currentUser,
 }: {
+  editItemId: string | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  editItem: Record<string, unknown> | null
   onSave: (data: Record<string, unknown>) => void
   categories: Category[]
   districts: District[]
   reporters: Reporter[]
+  currentUser: { id: string; name: string; role: string } | null
 }) {
-  const getFormFromItem = (item: Record<string, unknown> | null): Record<string, unknown> => {
-    if (item) {
-      return {
-        titleEn: item.titleEn || '',
-        titleTe: item.titleTe || '',
-        shortDescEn: item.shortDescEn || '',
-        shortDescTe: item.shortDescTe || '',
-        contentEn: item.contentEn || '',
-        contentTe: item.contentTe || '',
-        categoryId: item.categoryId || '',
-        stateId: item.stateId || '',
-        districtId: item.districtId || '',
-        thumbnailUrl: item.thumbnailUrl || '',
-        videoUrl: item.videoUrl || '',
-        sourceType: item.sourceType || 'original',
-        reporterId: item.reporterId || '',
-        priority: item.priority || 'normal',
-        status: item.status || 'draft',
-        isFeatured: item.isFeatured || false,
-        imagesUrls: typeof item.imagesUrls === 'string' ? JSON.parse(item.imagesUrls as string || '[]') : item.imagesUrls || [],
-      }
+  const [form, setForm] = useState<Record<string, unknown>>({
+    title: '', shortDesc: '', content: '', categoryId: '', districtId: '',
+    thumbnailUrl: '', videoUrl: '', sourceType: 'original', reporterId: '',
+    priority: 'normal', status: 'draft', isFeatured: false,
+  })
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+
+  // Load edit data when dialog opens
+  useEffect(() => {
+    if (open && editItemId && !loaded) {
+      fetch(`/api/admin/news/${editItemId}`)
+        .then(r => r.json())
+        .then(data => {
+          setForm({
+            title: data.title || data.titleEn || '',
+            shortDesc: data.shortDesc || data.shortDescEn || '',
+            content: data.content || data.contentEn || '',
+            categoryId: data.categoryId || '',
+            districtId: data.districtId || '',
+            thumbnailUrl: data.thumbnailUrl || '',
+            videoUrl: data.videoUrl || '',
+            sourceType: data.sourceType || 'original',
+            reporterId: data.reporterId || '',
+            priority: data.priority || 'normal',
+            status: data.status || 'draft',
+            isFeatured: data.isFeatured || false,
+          })
+          setLoaded(true)
+        })
+        .catch(() => toast.error('Failed to load news'))
+    } else if (open && !editItemId) {
+      setForm({
+        title: '', shortDesc: '', content: '', categoryId: '', districtId: '',
+        thumbnailUrl: '', videoUrl: '', sourceType: 'original', reporterId: '',
+        priority: 'normal', status: 'draft', isFeatured: false,
+      })
+      setLoaded(true)
     }
-    return {
-      titleEn: '', titleTe: '', shortDescEn: '', shortDescTe: '',
-      contentEn: '', contentTe: '', categoryId: '', stateId: '', districtId: '',
-      thumbnailUrl: '', videoUrl: '', sourceType: 'original', reporterId: '',
-      priority: 'normal', status: 'draft', isFeatured: false, imagesUrls: [],
+    if (!open) {
+      setLoaded(false)
+    }
+  }, [open, editItemId])
+
+  const updateField = (key: string, value: unknown) => setForm(prev => ({ ...prev, [key]: value }))
+
+  const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingThumbnail(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/admin/media/upload', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (data.url) {
+        updateField('thumbnailUrl', data.url)
+        toast.success('Image uploaded')
+      }
+    } catch {
+      toast.error('Upload failed')
+    } finally {
+      setUploadingThumbnail(false)
     }
   }
 
-  const [form, setForm] = useState<Record<string, unknown>>(() => getFormFromItem(editItem))
-
-  const updateField = (key: string, value: unknown) => setForm(prev => ({ ...prev, [key]: value }))
+  if (!loaded && open) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin h-6 w-6 border-2 border-red-600 border-t-transparent rounded-full" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editItem ? 'Edit News' : 'Create News'}</DialogTitle>
+          <DialogTitle>{editItemId ? 'Edit News' : 'Create News'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Title (English)</Label>
-              <Input value={form.titleEn as string} onChange={(e) => updateField('titleEn', e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Title (Telugu)</Label>
-              <Input value={form.titleTe as string} onChange={(e) => updateField('titleTe', e.target.value)} />
-            </div>
+          {/* Title */}
+          <div className="space-y-2">
+            <Label>Title</Label>
+            <Input value={form.title as string} onChange={(e) => updateField('title', e.target.value)} placeholder="Enter news title" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Short Desc (English)</Label>
-              <Textarea value={form.shortDescEn as string} onChange={(e) => updateField('shortDescEn', e.target.value)} rows={2} />
-            </div>
-            <div className="space-y-2">
-              <Label>Short Desc (Telugu)</Label>
-              <Textarea value={form.shortDescTe as string} onChange={(e) => updateField('shortDescTe', e.target.value)} rows={2} />
-            </div>
+
+          {/* Short Description */}
+          <div className="space-y-2">
+            <Label>Short Description</Label>
+            <Textarea value={form.shortDesc as string} onChange={(e) => updateField('shortDesc', e.target.value)} rows={2} placeholder="Brief summary (max 500 chars)" maxLength={500} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Content (English)</Label>
-              <Textarea value={form.contentEn as string} onChange={(e) => updateField('contentEn', e.target.value)} rows={4} />
-            </div>
-            <div className="space-y-2">
-              <Label>Content (Telugu)</Label>
-              <Textarea value={form.contentTe as string} onChange={(e) => updateField('contentTe', e.target.value)} rows={4} />
-            </div>
+
+          {/* Content */}
+          <div className="space-y-2">
+            <Label>Full Content</Label>
+            <Textarea value={form.content as string} onChange={(e) => updateField('content', e.target.value)} rows={5} placeholder="Detailed news content (optional)" />
           </div>
+
+          {/* Category & District */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Category</Label>
               <Select value={form.categoryId as string} onValueChange={(v) => updateField('categoryId', v)}>
                 <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>
-                  {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.nameEn}</SelectItem>)}
+                  {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -457,12 +482,14 @@ function NewsFormDialog({
               <Select value={(form.districtId as string) || 'none'} onValueChange={(v) => updateField('districtId', v === 'none' ? '' : v)}>
                 <SelectTrigger><SelectValue placeholder="Select district" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="none">Statewide</SelectItem>
                   {districts.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </div>
+
+          {/* Priority & Status */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Priority</Label>
@@ -481,20 +508,51 @@ function NewsFormDialog({
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="pending_review">Pending Review</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="pending_review">Submit for Review</SelectItem>
+                  <SelectItem value="published">Publish</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
+
+          {/* Thumbnail Upload */}
           <div className="space-y-2">
-            <Label>Thumbnail URL</Label>
-            <Input value={form.thumbnailUrl as string} onChange={(e) => updateField('thumbnailUrl', e.target.value)} placeholder="https://..." />
+            <Label>Thumbnail Image</Label>
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <Input value={form.thumbnailUrl as string} onChange={(e) => updateField('thumbnailUrl', e.target.value)} placeholder="Image URL or upload below" />
+              </div>
+              <label className="cursor-pointer">
+                <Button type="button" variant="outline" size="sm" disabled={uploadingThumbnail} asChild>
+                  <span>
+                    {uploadingThumbnail ? (
+                      <div className="animate-spin h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full" />
+                    ) : (
+                      <Upload className="h-4 w-4 mr-1" />
+                    )}
+                    Upload
+                  </span>
+                </Button>
+                <input type="file" accept="image/*" className="hidden" onChange={handleThumbnailUpload} />
+              </label>
+            </div>
+            {form.thumbnailUrl && (
+              <div className="relative inline-block mt-2">
+                <img src={form.thumbnailUrl as string} alt="Preview" className="h-20 w-32 object-cover rounded-lg border" />
+                <button onClick={() => updateField('thumbnailUrl', '')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
           </div>
+
+          {/* Video URL */}
           <div className="space-y-2">
-            <Label>Video URL</Label>
+            <Label>Video URL (optional)</Label>
             <Input value={form.videoUrl as string} onChange={(e) => updateField('videoUrl', e.target.value)} placeholder="https://..." />
           </div>
+
+          {/* Source & Reporter */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Source Type</Label>
@@ -518,6 +576,8 @@ function NewsFormDialog({
               </Select>
             </div>
           </div>
+
+          {/* Featured toggle */}
           <div className="flex items-center gap-3">
             <Switch checked={form.isFeatured as boolean} onCheckedChange={(v) => updateField('isFeatured', v)} />
             <Label>Featured / Breaking</Label>
@@ -526,7 +586,7 @@ function NewsFormDialog({
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button className="bg-red-600 hover:bg-red-700" onClick={() => onSave(form)}>
-            {editItem ? 'Update' : 'Create'}
+            {editItemId ? 'Update' : 'Create'}
           </Button>
         </DialogFooter>
       </DialogContent>

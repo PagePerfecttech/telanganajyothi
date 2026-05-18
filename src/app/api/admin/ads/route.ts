@@ -9,9 +9,11 @@ export async function GET() {
     })
     return NextResponse.json(ads.map(ad => ({
       ...ad,
+      type: ad.type === 'image' ? 'poster' : ad.type,
       imagesUrls: JSON.parse(ad.imagesUrls),
       targetStateIds: JSON.parse(ad.targetStateIds),
       targetCategoryIds: JSON.parse(ad.targetCategoryIds),
+      frequency: ad.frequency || 5,
     })))
   } catch (error) {
     console.error('Ads list error:', error)
@@ -22,16 +24,20 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
+    // Map 'poster' to 'image' for DB storage
+    const adType = data.type === 'poster' ? 'image' : data.type || 'image'
+
     const ad = await db.customAd.create({
       data: {
         title: data.title,
         advertiser: data.advertiser,
-        type: data.type || 'image',
+        type: adType,
         imagesUrls: JSON.stringify(data.imagesUrls || []),
         layout: data.layout || 'grid',
         videoUrl: data.videoUrl || null,
         clickUrl: data.clickUrl || null,
         placement: data.placement || 'feed_inline',
+        frequency: data.frequency || 5,
         targetStateIds: JSON.stringify(data.targetStateIds || []),
         targetCategoryIds: JSON.stringify(data.targetCategoryIds || []),
         impressionsLimit: data.impressionsLimit || 0,
@@ -40,7 +46,13 @@ export async function POST(request: NextRequest) {
         isActive: data.isActive ?? true,
       },
     })
-    return NextResponse.json(ad, { status: 201 })
+    return NextResponse.json({
+      ...ad,
+      type: ad.type === 'image' ? 'poster' : ad.type,
+      imagesUrls: JSON.parse(ad.imagesUrls),
+      targetStateIds: JSON.parse(ad.targetStateIds),
+      targetCategoryIds: JSON.parse(ad.targetCategoryIds),
+    }, { status: 201 })
   } catch (error) {
     console.error('Ad create error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

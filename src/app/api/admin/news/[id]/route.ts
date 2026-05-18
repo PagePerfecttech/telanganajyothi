@@ -23,7 +23,13 @@ export async function GET(
       return NextResponse.json({ error: 'News not found' }, { status: 404 })
     }
 
-    return NextResponse.json(news)
+    // Return simplified with single fields
+    return NextResponse.json({
+      ...news,
+      title: news.titleEn,
+      shortDesc: news.shortDescEn,
+      content: news.contentEn,
+    })
   } catch (error) {
     console.error('News get error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -38,30 +44,35 @@ export async function PUT(
     const { id } = await params
     const data = await request.json()
 
+    // Accept single `title`/`shortDesc`/`content` and store in both En/Te
+    const title = data.title || data.titleEn
+    const shortDesc = data.shortDesc || data.shortDescEn
+    const content = data.content || data.contentEn
+
+    const updateData: Record<string, unknown> = {}
+    if (title !== undefined) { updateData.titleEn = title; updateData.titleTe = data.titleTe || title }
+    if (shortDesc !== undefined) { updateData.shortDescEn = shortDesc || null; updateData.shortDescTe = data.shortDescTe || shortDesc || null }
+    if (content !== undefined) { updateData.contentEn = content || null; updateData.contentTe = data.contentTe || content || null }
+    if (data.categoryId !== undefined) updateData.categoryId = data.categoryId
+    if (data.stateId !== undefined) updateData.stateId = data.stateId
+    if (data.districtId !== undefined) updateData.districtId = data.districtId || null
+    if (data.thumbnailUrl !== undefined) updateData.thumbnailUrl = data.thumbnailUrl || ''
+    if (data.imagesUrls !== undefined) updateData.imagesUrls = JSON.stringify(data.imagesUrls || [])
+    if (data.videoUrl !== undefined) updateData.videoUrl = data.videoUrl || null
+    if (data.sourceType !== undefined) updateData.sourceType = data.sourceType
+    if (data.reporterId !== undefined) updateData.reporterId = data.reporterId || null
+    if (data.priority !== undefined) updateData.priority = data.priority
+    if (data.status !== undefined) {
+      updateData.status = data.status
+      if (data.status === 'published') updateData.publishedAt = new Date()
+    }
+    if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured
+    if (data.expiresAt !== undefined) updateData.expiresAt = data.expiresAt ? new Date(data.expiresAt) : null
+    if (data.rejectReason !== undefined) updateData.rejectReason = data.rejectReason || null
+
     const news = await db.news.update({
       where: { id },
-      data: {
-        titleEn: data.titleEn,
-        titleTe: data.titleTe,
-        shortDescEn: data.shortDescEn || null,
-        shortDescTe: data.shortDescTe || null,
-        contentEn: data.contentEn || null,
-        contentTe: data.contentTe || null,
-        categoryId: data.categoryId,
-        stateId: data.stateId,
-        districtId: data.districtId || null,
-        thumbnailUrl: data.thumbnailUrl || '',
-        imagesUrls: JSON.stringify(data.imagesUrls || []),
-        videoUrl: data.videoUrl || null,
-        sourceType: data.sourceType || 'original',
-        reporterId: data.reporterId || null,
-        priority: data.priority || 'normal',
-        status: data.status,
-        isFeatured: data.isFeatured || false,
-        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
-        publishedAt: data.status === 'published' ? new Date() : undefined,
-        rejectReason: data.rejectReason || null,
-      },
+      data: updateData,
     })
 
     // Update tags
@@ -85,7 +96,7 @@ export async function PUT(
           action: 'update',
           entity: 'news',
           entityId: id,
-          changes: JSON.stringify({ title: data.titleEn, status: data.status }),
+          changes: JSON.stringify({ title, status: data.status }),
         },
       })
     }

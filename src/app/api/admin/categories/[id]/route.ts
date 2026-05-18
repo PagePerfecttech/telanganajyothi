@@ -25,11 +25,13 @@ export async function PUT(
   try {
     const { id } = await params
     const data = await request.json()
+    // Accept `name` and store in both En/Te fields
+    const name = data.name || data.nameEn || ''
     const category = await db.category.update({
       where: { id },
       data: {
-        nameEn: data.nameEn,
-        nameTe: data.nameTe,
+        nameEn: name,
+        nameTe: data.nameTe || name,
         slug: data.slug,
         iconUrl: data.iconUrl || null,
         color: data.color || null,
