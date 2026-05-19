@@ -17,7 +17,16 @@ export const metadata: Metadata = {
   title: "Telangana Jyothi Spot News - Admin Dashboard",
   description: "Admin dashboard for managing Telangana Jyothi Spot News content, reporters, ads, and app configuration.",
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/site.webmanifest',
+  appleWebApp: {
+    title: 'TJ Spot News',
   },
 };
 

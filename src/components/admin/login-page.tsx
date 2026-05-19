@@ -49,8 +49,8 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-orange-50 to-amber-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-4">
       <Card className="w-full max-w-md shadow-xl border-0">
         <CardHeader className="text-center space-y-4 pb-2">
-          <div className="mx-auto w-16 h-16 bg-red-600 rounded-xl flex items-center justify-center shadow-lg">
-            <Newspaper className="w-8 h-8 text-white" />
+          <div className="mx-auto w-20 h-20 rounded-xl overflow-hidden flex items-center justify-center shadow-lg bg-white p-1">
+            <img src="/logo.png" alt="Telangana Jyothi Logo" className="w-full h-full object-contain" />
           </div>
           <div>
             <CardTitle className="text-2xl font-bold">Telangana Jyothi</CardTitle>

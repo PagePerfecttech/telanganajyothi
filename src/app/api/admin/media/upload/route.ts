@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
-import { existsSync } from 'fs'
 import { logAudit, getClientIp } from '@/lib/audit'
 import { verifyAuth } from '@/lib/auth'
+import { s3Client, R2_BUCKET, R2_PUBLIC_URL } from '@/lib/r2'
+import { PutObjectCommand } from '@aws-sdk/client-s3'
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,19 +37,19 @@ export async function POST(request: NextRequest) {
     const randomStr = Math.random().toString(36).substring(2, 8)
     const filename = `${timestamp}-${randomStr}${ext}`
 
-    // Ensure uploads directory exists
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
-    }
-
-    // Write file to disk
-    const filePath = path.join(uploadsDir, filename)
+    // Upload to Cloudflare R2
     const buffer = Buffer.from(await file.arrayBuffer())
-    await writeFile(filePath, buffer)
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: R2_BUCKET,
+        Key: filename,
+        Body: buffer,
+        ContentType: file.type,
+      })
+    )
 
     // Generate URLs
-    const originalUrl = `/uploads/${filename}`
+    const originalUrl = `${R2_PUBLIC_URL}/${filename}`
     const thumbnailUrl = file.type.startsWith('image/') ? originalUrl : null
 
     // Save to media library in database

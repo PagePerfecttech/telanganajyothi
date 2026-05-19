@@ -57,8 +57,8 @@ function SidebarNav({
   return (
     <div className="flex flex-col h-full">
       <div className={cn('flex items-center gap-3 px-4 h-16 border-b border-white/10', collapsed && 'justify-center px-2')}>
-        <div className="w-9 h-9 bg-red-600 rounded-lg flex items-center justify-center flex-shrink-0">
-          <Newspaper className="w-5 h-5 text-white" />
+        <div className="w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0 bg-white p-0.5">
+          <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
         </div>
         {!collapsed && (
           <div className="overflow-hidden">

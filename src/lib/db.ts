@@ -11,6 +11,3 @@ export const db =
   })
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
-
-// Enable WAL mode for better concurrent access with SQLite
-db.$executeRawUnsafe('PRAGMA journal_mode=WAL').catch(() => {})
