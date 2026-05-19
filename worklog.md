@@ -3,22 +3,21 @@
 ---
 Task ID: 1
 Agent: Main Agent
-Task: Fix "Unexpected token '<'" error and convert news/ads forms from dialog to full page
+Task: Deep audit and fix all errors in the admin dashboard project
 
 Work Log:
-- Investigated the root cause of the "Unexpected token '<'" JSON parsing error
-- Found that the proxy.ts (Next.js 16 middleware) was working but API error handling was unsafe
-- Created proper error handling in utils.ts with `authFetchJson<T>()` that safely handles non-JSON responses
-- Converted news-page.tsx from dialog-based form to full-page form with sidebar layout
-- Converted ads-page.tsx from dialog-based form to full-page form with sidebar layout
-- Fixed all admin pages (10 files) to use `authFetchJson` instead of unsafe `authFetch().json()` pattern
-- Added proper error handling with toast notifications for all data fetch operations
-- Rebuilt the proxy.ts middleware for Next.js 16 (which uses "proxy" convention instead of "middleware")
-- Verified build compiles successfully with `next build`
+- Performed comprehensive audit of the entire project structure
+- Read all 14 admin page components, all 30+ API routes, Prisma schema, config files
+- Identified critical bug: mobile videos route references `nameEn`/`nameTe` fields that don't exist in Category model
+- Identified missing middleware/proxy auth protection for admin API routes
+- Verified Prisma client generation and DB migration status
+- Verified all Dialog components have DialogTitle (already fixed)
+- Verified layout.tsx has suppressHydrationWarning on both html and body (already fixed)
+- Verified news page uses full-page forms (not dialog boxes) for create/edit
 
 Stage Summary:
-- News and Ads creation/editing now use full-page forms instead of dialogs
-- All API calls now safely handle non-JSON responses (fixes the "Unexpected token '<'" error)
-- Added `authFetchJson<T>()` and `safeJsonParse()` utilities in lib/utils.ts
-- Build verified: `next build` compiles successfully
-- Key files changed: src/proxy.ts, src/lib/utils.ts, src/components/admin/news-page.tsx, src/components/admin/ads-page.tsx, and 8 other admin pages
+- Found and fixed 1 critical Prisma crash bug (nameEn/nameTe)
+- Created proper proxy.ts auth middleware
+- Fixed next.config.ts (removed invalid eslint key, added allowedDevOrigins)
+- DB is in sync with Prisma schema, has seed data (4 admins, 1 state, 10 categories, 52 news)
+- All 14 admin modules are well-implemented with proper error handling

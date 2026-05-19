@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const [videos, total] = await Promise.all([
       db.video.findMany({
         where: { status: 'published', deletedAt: null },
-        include: { category: { select: { nameEn: true, nameTe: true } } },
+        include: { category: { select: { name: true, color: true } } },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
