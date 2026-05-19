@@ -573,8 +573,20 @@ function VideoFormPage({
     editItem ? formatDuration(editItem.duration) : '00:00'
   )
   const [uploading, setUploading] = useState(false)
+  const [uploadingVideo, setUploadingVideo] = useState(false)
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
+
+  const extractYoutubeThumbnail = (url: string): string | null => {
+    if (!url) return null
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/
+    const match = url.match(regExp)
+    if (match && match[2].length === 11) {
+      return `https://img.youtube.com/vi/${match[2]}/hqdefault.jpg`
+    }
+    return null
+  }
 
   const updateField = (key: string, value: unknown) => setForm((prev) => ({ ...prev, [key]: value }))
 
@@ -603,6 +615,50 @@ function VideoFormPage({
       toast.error('Failed to upload thumbnail')
     } finally {
       setUploading(false)
+    }
+  }
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingVideo(true)
+    try {
+      const uploadForm = new FormData()
+      uploadForm.append('file', file)
+      const res = await authFetch('/api/admin/media/upload', {
+        method: 'POST',
+        body: uploadForm,
+      })
+      if (!res.ok) throw new Error('Upload failed')
+      const data = await res.json()
+      const url = data.url || data.filePath || ''
+      updateField('videoUrl', url)
+      toast.success('Video file uploaded')
+
+      // Auto-extract duration from video file if possible
+      try {
+        const videoElement = document.createElement('video')
+        videoElement.src = url
+        videoElement.onloadedmetadata = () => {
+          const duration = Math.round(videoElement.duration)
+          updateField('duration', duration)
+          setDurationInput(formatDuration(duration))
+        }
+      } catch (err) {
+        console.error('Failed to extract video duration:', err)
+      }
+    } catch {
+      toast.error('Failed to upload video')
+    } finally {
+      setUploadingVideo(false)
+    }
+  }
+
+  const handleVideoUrlChange = (url: string) => {
+    updateField('videoUrl', url)
+    const ytThumb = extractYoutubeThumbnail(url)
+    if (ytThumb && (!form.thumbnailUrl || (form.thumbnailUrl as string).startsWith('https://img.youtube.com/'))) {
+      updateField('thumbnailUrl', ytThumb)
     }
   }
 
@@ -679,15 +735,44 @@ function VideoFormPage({
               </div>
 
               {/* Video URL */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label className="text-sm font-semibold">
-                  Video URL <span className="text-red-600">*</span>
+                  Video URL / File <span className="text-red-600">*</span>
                 </Label>
-                <Input
-                  value={form.videoUrl as string}
-                  onChange={(e) => updateField('videoUrl', e.target.value)}
-                  placeholder="https://example.com/video.mp4"
-                />
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <Input
+                      value={form.videoUrl as string}
+                      onChange={(e) => handleVideoUrlChange(e.target.value)}
+                      placeholder="YouTube link or direct video URL"
+                    />
+                  </div>
+                  <label className="cursor-pointer">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploadingVideo}
+                      asChild
+                    >
+                      <span>
+                        {uploadingVideo ? (
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4 mr-1" />
+                        )}
+                        Upload Video
+                      </span>
+                    </Button>
+                    <input
+                      ref={videoInputRef}
+                      type="file"
+                      accept="video/*"
+                      className="hidden"
+                      onChange={handleVideoUpload}
+                    />
+                  </label>
+                </div>
               </div>
 
               {/* Thumbnail */}

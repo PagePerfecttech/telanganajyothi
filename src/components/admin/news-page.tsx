@@ -473,6 +473,24 @@ function NewsFormPage({
 
   const updateField = (key: string, value: unknown) => setForm(prev => ({ ...prev, [key]: value }))
 
+  const extractYoutubeThumbnail = (url: string): string | null => {
+    if (!url) return null
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/
+    const match = url.match(regExp)
+    if (match && match[2].length === 11) {
+      return `https://img.youtube.com/vi/${match[2]}/hqdefault.jpg`
+    }
+    return null
+  }
+
+  const handleVideoUrlChange = (url: string) => {
+    updateField('videoUrl', url)
+    const ytThumb = extractYoutubeThumbnail(url)
+    if (ytThumb && (!form.thumbnailUrl || (form.thumbnailUrl as string).startsWith('https://img.youtube.com/'))) {
+      updateField('thumbnailUrl', ytThumb)
+    }
+  }
+
   const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -707,7 +725,7 @@ function NewsFormPage({
                 <Label className="text-sm font-semibold">Video URL (optional)</Label>
                 <Input
                   value={form.videoUrl as string}
-                  onChange={(e) => updateField('videoUrl', e.target.value)}
+                  onChange={(e) => handleVideoUrlChange(e.target.value)}
                   placeholder="https://..."
                 />
               </div>

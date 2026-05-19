@@ -6,13 +6,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Newspaper, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('admin@telanganajyothi.com')
-  const [password, setPassword] = useState('admin123')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [forgotDialogOpen, setForgotDialogOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const { setAuthenticated, setCurrentUser } = useAppStore()
 
@@ -30,23 +32,23 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        toast.error(data.error || 'Login failed')
-        return
+        throw new Error(data.error || 'Login failed')
       }
 
       localStorage.setItem('admin_token', data.token)
+      setCurrentUser(data.admin)
       setAuthenticated(true)
-      setCurrentUser(data.user)
       toast.success('Welcome back!')
-    } catch {
-      toast.error('Network error. Please try again.')
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Invalid credentials'
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-orange-50 to-amber-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
       <Card className="w-full max-w-md shadow-xl border-0">
         <CardHeader className="text-center space-y-4 pb-2">
           <div className="mx-auto w-20 h-20 rounded-xl overflow-hidden flex items-center justify-center shadow-lg bg-white p-1">
@@ -71,7 +73,17 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-xs text-muted-foreground hover:text-red-600"
+                  onClick={() => setForgotDialogOpen(true)}
+                >
+                  Forgot password?
+                </Button>
+              </div>
               <div className="relative">
                 <Input
                   id="password"
@@ -99,6 +111,33 @@ export default function LoginPage() {
           </form>
         </CardContent>
       </Card>
+
+      <Dialog open={forgotDialogOpen} onOpenChange={setForgotDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Forgot Password?</DialogTitle>
+            <DialogDescription>
+              Instructions to recover or reset your administrator account password.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 text-sm text-muted-foreground">
+            <p>
+              For security reasons, admin password resets cannot be self-serviced.
+            </p>
+            <p>
+              Please contact the primary system administrator or the IT Support desk to reset your credentials. A super-administrator can reset your password from the "Admin Users" management panel.
+            </p>
+            <div className="bg-muted p-3 rounded-lg border text-xs font-mono">
+              Support Email: support@telanganajyothi.com
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setForgotDialogOpen(false)} className="bg-red-600 hover:bg-red-700 text-white">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
