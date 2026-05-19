@@ -96,9 +96,6 @@ export default function LoginPage() {
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Sign In
             </Button>
-            <p className="text-xs text-center text-muted-foreground mt-4">
-              Default: admin@telanganajyothi.com / admin123
-            </p>
           </form>
         </CardContent>
       </Card>
