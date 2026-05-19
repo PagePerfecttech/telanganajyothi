@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, ImageIcon, Film, Upload, X, Megaphone, Settings, Play, LayoutGrid } from 'lucide-react'
+import { authFetch, authFetchJSON } from '@/lib/utils'
 
 interface AdItem {
   id: string
@@ -55,7 +56,7 @@ export default function AdsPage() {
   const fetchAds = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/admin/ads')
+      const res = await authFetch('/api/admin/ads')
       setAds(await res.json())
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
@@ -63,7 +64,7 @@ export default function AdsPage() {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/settings')
+      const res = await authFetch('/api/admin/settings')
       setSettings(await res.json())
     } catch (err) { console.error(err) }
   }, [])
@@ -79,16 +80,14 @@ export default function AdsPage() {
       const submitData = { ...form }
 
       if (editItem) {
-        await fetch(`/api/admin/ads/${editItem.id}`, {
+        await authFetchJSON(`/api/admin/ads/${editItem.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(submitData),
         })
         toast.success('Ad updated')
       } else {
-        await fetch('/api/admin/ads', {
+        await authFetchJSON('/api/admin/ads', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(submitData),
         })
         toast.success('Ad created')
@@ -102,7 +101,7 @@ export default function AdsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this ad?')) return
     try {
-      await fetch(`/api/admin/ads/${id}`, { method: 'DELETE' })
+      await authFetch(`/api/admin/ads/${id}`, { method: 'DELETE' })
       toast.success('Ad deleted')
       fetchAds()
     } catch { toast.error('Failed to delete') }
@@ -110,9 +109,8 @@ export default function AdsPage() {
 
   const handleSaveSettings = async () => {
     try {
-      await fetch('/api/admin/settings', {
+      await authFetchJSON('/api/admin/settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       })
       toast.success('AdMob settings saved')
@@ -126,7 +124,7 @@ export default function AdsPage() {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const res = await fetch('/api/admin/media/upload', { method: 'POST', body: formData })
+      const res = await authFetch('/api/admin/media/upload', { method: 'POST', body: formData })
       const data = await res.json()
       if (data.url) {
         const current = (form.imagesUrls as string[]) || []
@@ -225,9 +223,8 @@ export default function AdsPage() {
                         checked={ad.isActive}
                         onCheckedChange={async (v) => {
                           try {
-                            await fetch(`/api/admin/ads/${ad.id}`, {
+                            await authFetchJSON(`/api/admin/ads/${ad.id}`, {
                               method: 'PUT',
-                              headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ ...ad, isActive: v, type: ad.type === 'image' ? 'poster' : ad.type }),
                             })
                             toast.success(v ? 'Ad activated' : 'Ad deactivated')

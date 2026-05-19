@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { logAudit, getClientIp } from '@/lib/audit'
 
 export async function GET() {
   try {
@@ -35,6 +36,14 @@ export async function POST(request: NextRequest) {
         status: data.status || 'pending',
         canPublishDirectly: data.canPublishDirectly || false,
       },
+    })
+    await logAudit({
+      adminId: data.createdBy || data.adminId || 'system',
+      action: 'create',
+      entity: 'reporter',
+      entityId: reporter.id,
+      ipAddress: getClientIp(request),
+      changes: { name: data.name, phone: data.phone, email: data.email },
     })
     return NextResponse.json(reporter, { status: 201 })
   } catch (error) {

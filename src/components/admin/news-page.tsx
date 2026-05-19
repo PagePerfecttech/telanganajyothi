@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAppStore } from '@/lib/store'
+import { authFetch, authFetchJSON } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -87,7 +88,7 @@ export default function NewsPage() {
       if (filterPriority && filterPriority !== 'all') params.set('priority', filterPriority)
       if (activeTab === 'pending') params.set('status', 'pending_review')
 
-      const res = await fetch(`/api/admin/news?${params}`)
+      const res = await authFetch(`/api/admin/news?${params}`)
       const data = await res.json()
       setNews(data.news || [])
       setTotal(data.total || 0)
@@ -110,36 +111,34 @@ export default function NewsPage() {
   }, [fetchNews])
 
   const fetchCategories = async () => {
-    const res = await fetch('/api/admin/categories')
+    const res = await authFetch('/api/admin/categories')
     setCategories(await res.json())
   }
   const fetchDistricts = async () => {
-    const res = await fetch('/api/admin/districts')
+    const res = await authFetch('/api/admin/districts')
     setDistricts(await res.json())
   }
   const fetchReporters = async () => {
-    const res = await fetch('/api/admin/reporters')
+    const res = await authFetch('/api/admin/reporters')
     setReporters(await res.json())
   }
   const fetchTags = async () => {
-    const res = await fetch('/api/admin/tags')
+    const res = await authFetch('/api/admin/tags')
     setTags(await res.json())
   }
 
   const handleSave = async (formData: Record<string, unknown>) => {
     try {
       if (editItemId) {
-        const res = await fetch(`/api/admin/news/${editItemId}`, {
+        const res = await authFetchJSON(`/api/admin/news/${editItemId}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...formData, updatedBy: currentUser?.id }),
         })
         if (!res.ok) throw new Error()
         toast.success('News updated successfully')
       } else {
-        const res = await fetch('/api/admin/news', {
+        const res = await authFetchJSON('/api/admin/news', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...formData, createdBy: currentUser?.id }),
         })
         if (!res.ok) throw new Error()
@@ -155,9 +154,8 @@ export default function NewsPage() {
 
   const handleStatusChange = async (id: string, status: string) => {
     try {
-      const res = await fetch(`/api/admin/news/${id}`, {
+      const res = await authFetchJSON(`/api/admin/news/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, adminId: currentUser?.id }),
       })
       if (!res.ok) throw new Error()
@@ -177,7 +175,7 @@ export default function NewsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this news?')) return
     try {
-      await fetch(`/api/admin/news/${id}`, { method: 'DELETE' })
+      await authFetch(`/api/admin/news/${id}`, { method: 'DELETE' })
       toast.success('News deleted')
       fetchNews()
     } catch {
@@ -398,7 +396,7 @@ function NewsFormDialog({
   // Load edit data when dialog opens
   useEffect(() => {
     if (open && editItemId && !loaded) {
-      fetch(`/api/admin/news/${editItemId}`)
+      authFetch(`/api/admin/news/${editItemId}`)
         .then(r => r.json())
         .then(data => {
           setForm({
@@ -442,7 +440,7 @@ function NewsFormDialog({
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const res = await fetch('/api/admin/media/upload', { method: 'POST', body: formData })
+      const res = await authFetch('/api/admin/media/upload', { method: 'POST', body: formData })
       const data = await res.json()
       if (data.url) {
         updateField('thumbnailUrl', data.url)
@@ -465,7 +463,7 @@ function NewsFormDialog({
         if (currentImages.length >= 8) break
         const formData = new FormData()
         formData.append('file', file)
-        const res = await fetch('/api/admin/media/upload', { method: 'POST', body: formData })
+        const res = await authFetch('/api/admin/media/upload', { method: 'POST', body: formData })
         const data = await res.json()
         if (data.url) {
           currentImages.push(data.url)
@@ -498,6 +496,9 @@ function NewsFormDialog({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="sr-only">Loading News</DialogTitle>
+          </DialogHeader>
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin h-6 w-6 border-2 border-red-600 border-t-transparent rounded-full" />
           </div>

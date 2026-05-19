@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useAppStore, type ViewType } from '@/lib/store'
 import LoginPage from '@/components/admin/login-page'
 import AdminLayout from '@/components/admin/admin-layout'
@@ -36,7 +37,16 @@ const moduleComponents: Record<ViewType, React.ComponentType> = {
 }
 
 export default function Home() {
-  const { isAuthenticated, activeView } = useAppStore()
+  const { isAuthenticated, activeView, logout } = useAppStore()
+
+  // Listen for auth:unauthorized events (401 from API calls)
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout()
+    }
+    window.addEventListener('auth:unauthorized', handleUnauthorized)
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized)
+  }, [logout])
 
   if (!isAuthenticated) {
     return <LoginPage />

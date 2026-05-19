@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { logAudit, getClientIp } from '@/lib/audit'
 
 export async function GET() {
   try {
@@ -28,6 +29,13 @@ export async function PUT(request: NextRequest) {
     )
 
     await Promise.all(updates)
+    await logAudit({
+      adminId: 'system',
+      action: 'settings_update',
+      entity: 'settings',
+      ipAddress: getClientIp(request),
+      changes: data,
+    })
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Settings update error:', error)

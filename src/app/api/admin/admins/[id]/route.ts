@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import bcrypt from 'bcryptjs'
+import { logAudit, getClientIp } from '@/lib/audit'
 
 export async function PUT(
   request: NextRequest,
@@ -15,11 +17,20 @@ export async function PUT(
     if (data.role !== undefined) updateData.role = data.role
     if (data.isActive !== undefined) updateData.isActive = data.isActive
     if (data.avatar !== undefined) updateData.avatar = data.avatar
-    if (data.password) updateData.passwordHash = data.password
+    if (data.password) updateData.passwordHash = await bcrypt.hash(data.password, 10)
 
     const admin = await db.admin.update({
       where: { id },
       data: updateData,
+    })
+
+    await logAudit({
+      adminId: data.updatedBy || data.adminId || 'system',
+      action: 'update',
+      entity: 'admin',
+      entityId: id,
+      ipAddress: getClientIp(request),
+      changes: updateData,
     })
 
     return NextResponse.json({
@@ -36,12 +47,19 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
     await db.admin.update({ where: { id }, data: { deletedAt: new Date(), isActive: false } })
+    await logAudit({
+      adminId: 'system',
+      action: 'delete',
+      entity: 'admin',
+      entityId: id,
+      ipAddress: getClientIp(request),
+    })
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Admin delete error:', error)

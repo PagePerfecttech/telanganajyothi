@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { Settings, Shield, Wrench, MessageSquare, Moon, Video, Bell, Bookmark, Share, Save } from 'lucide-react'
+import { authFetch, authFetchJSON } from '@/lib/utils'
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Record<string, string>>({})
@@ -18,7 +19,7 @@ export default function SettingsPage() {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/settings')
+      const res = await authFetch('/api/admin/settings')
       setSettings(await res.json())
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
@@ -29,9 +30,8 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      await fetch('/api/admin/settings', {
+      await authFetchJSON('/api/admin/settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       })
       toast.success('Settings saved successfully')

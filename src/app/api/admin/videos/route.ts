@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { logAudit, getClientIp } from '@/lib/audit'
 
 export async function GET() {
   try {
@@ -28,6 +29,14 @@ export async function POST(request: NextRequest) {
         categoryId: data.categoryId || null,
         status: data.status || 'draft',
       },
+    })
+    await logAudit({
+      adminId: data.createdBy || data.adminId || 'system',
+      action: 'create',
+      entity: 'video',
+      entityId: video.id,
+      ipAddress: getClientIp(request),
+      changes: { title: data.title, videoUrl: data.videoUrl, status: data.status || 'draft' },
     })
     return NextResponse.json(video, { status: 201 })
   } catch (error) {

@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { Upload, Trash2, ImageIcon, ExternalLink, Copy, FileVideo, X, FolderOpen } from 'lucide-react'
+import { authFetch } from '@/lib/utils'
 
 interface MediaItem {
   id: string
@@ -33,7 +34,7 @@ export default function MediaPage() {
   const fetchMedia = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/admin/media')
+      const res = await authFetch('/api/admin/media')
       setMedia(await res.json())
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
@@ -61,7 +62,7 @@ export default function MediaPage() {
       try {
         const formData = new FormData()
         formData.append('file', file)
-        const res = await fetch('/api/admin/media/upload', { method: 'POST', body: formData })
+        const res = await authFetch('/api/admin/media/upload', { method: 'POST', body: formData })
         if (res.ok) successCount++
         else failCount++
       } catch {
@@ -95,7 +96,7 @@ export default function MediaPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this media?')) return
     try {
-      await fetch(`/api/admin/media/${id}`, { method: 'DELETE' })
+      await authFetch(`/api/admin/media/${id}`, { method: 'DELETE' })
       toast.success('Media deleted')
       fetchMedia()
     } catch { toast.error('Failed to delete') }

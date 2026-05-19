@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import bcrypt from 'bcryptjs'
+import { logAudit, getClientIp } from '@/lib/audit'
 
 export async function GET() {
   try {
@@ -27,15 +29,25 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
+    const plainPassword = data.password || 'password123'
+    const hashedPassword = await bcrypt.hash(plainPassword, 10)
     const admin = await db.admin.create({
       data: {
         email: data.email,
-        passwordHash: data.password || 'password123', // Will be hashed in production
+        passwordHash: hashedPassword,
         name: data.name,
         avatar: data.avatar || null,
         role: data.role || 'editor',
         isActive: data.isActive ?? true,
       },
+    })
+    await logAudit({
+      adminId: data.createdBy || data.adminId || 'system',
+      action: 'create',
+      entity: 'admin',
+      entityId: admin.id,
+      ipAddress: getClientIp(request),
+      changes: { email: data.email, name: data.name, role: data.role || 'editor' },
     })
     return NextResponse.json({
       id: admin.id,

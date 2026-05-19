@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
 import { Plus, Trash2, Bell, Send } from 'lucide-react'
+import { authFetch, authFetchJSON } from '@/lib/utils'
 
 interface NotificationItem {
   id: string
@@ -48,7 +49,7 @@ export default function NotificationsPage() {
   const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/admin/notifications')
+      const res = await authFetch('/api/admin/notifications')
       setNotifications(await res.json())
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
@@ -58,9 +59,8 @@ export default function NotificationsPage() {
 
   const handleSave = async () => {
     try {
-      const res = await fetch('/api/admin/notifications', {
+      const res = await authFetchJSON('/api/admin/notifications', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
       if (!res.ok) throw new Error()
@@ -73,7 +73,7 @@ export default function NotificationsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this notification?')) return
     try {
-      await fetch(`/api/admin/notifications/${id}`, { method: 'DELETE' })
+      await authFetch(`/api/admin/notifications/${id}`, { method: 'DELETE' })
       toast.success('Notification deleted')
       fetchNotifications()
     } catch { toast.error('Failed to delete') }

@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, MapPin } from 'lucide-react'
+import { authFetch, authFetchJSON } from '@/lib/utils'
 
 interface StateItem { id: string; name: string; code: string; isActive: boolean; _count?: { districts: number; news: number } }
 interface DistrictItem { id: string; name: string; stateId: string; isActive: boolean; state?: { name: string }; _count?: { news: number } }
@@ -31,7 +32,7 @@ export default function LocationsPage() {
 
   const fetchStates = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/states')
+      const res = await authFetch('/api/admin/states')
       setStates(await res.json())
     } catch (err) { console.error(err) }
   }, [])
@@ -39,7 +40,7 @@ export default function LocationsPage() {
   const fetchDistricts = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/admin/districts')
+      const res = await authFetch('/api/admin/districts')
       setDistricts(await res.json())
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
@@ -50,10 +51,10 @@ export default function LocationsPage() {
   const handleSaveState = async () => {
     try {
       if (editState) {
-        await fetch(`/api/admin/states`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editState.id, ...stateForm }) })
+        await authFetchJSON(`/api/admin/states`, { method: 'PUT', body: JSON.stringify({ id: editState.id, ...stateForm }) })
         toast.success('State updated')
       } else {
-        await fetch('/api/admin/states', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(stateForm) })
+        await authFetchJSON('/api/admin/states', { method: 'POST', body: JSON.stringify(stateForm) })
         toast.success('State created')
       }
       setStateDialogOpen(false)
@@ -65,10 +66,10 @@ export default function LocationsPage() {
   const handleSaveDistrict = async () => {
     try {
       if (editDistrict) {
-        await fetch(`/api/admin/districts`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editDistrict.id, ...districtForm }) })
+        await authFetchJSON(`/api/admin/districts`, { method: 'PUT', body: JSON.stringify({ id: editDistrict.id, ...districtForm }) })
         toast.success('District updated')
       } else {
-        await fetch('/api/admin/districts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(districtForm) })
+        await authFetchJSON('/api/admin/districts', { method: 'POST', body: JSON.stringify(districtForm) })
         toast.success('District created')
       }
       setDistrictDialogOpen(false)
@@ -80,7 +81,7 @@ export default function LocationsPage() {
   const handleDeleteDistrict = async (id: string) => {
     if (!confirm('Delete this district?')) return
     try {
-      await fetch(`/api/admin/districts`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+      await authFetchJSON(`/api/admin/districts`, { method: 'DELETE', body: JSON.stringify({ id }) })
       toast.success('District deleted')
       fetchDistricts()
     } catch { toast.error('Failed to delete') }

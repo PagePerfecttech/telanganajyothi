@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, FolderOpen } from 'lucide-react'
+import { authFetch, authFetchJSON } from '@/lib/utils'
 
 interface CategoryItem {
   id: string
@@ -36,7 +37,7 @@ export default function CategoriesPage() {
   const fetchCategories = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/admin/categories')
+      const res = await authFetch('/api/admin/categories')
       setCategories(await res.json())
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
@@ -63,17 +64,15 @@ export default function CategoriesPage() {
   const handleSave = async () => {
     try {
       if (editItem) {
-        const res = await fetch(`/api/admin/categories/${editItem.id}`, {
+        const res = await authFetchJSON(`/api/admin/categories/${editItem.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(form),
         })
         if (!res.ok) throw new Error()
         toast.success('Category updated')
       } else {
-        const res = await fetch('/api/admin/categories', {
+        const res = await authFetchJSON('/api/admin/categories', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(form),
         })
         if (!res.ok) throw new Error()
@@ -87,7 +86,7 @@ export default function CategoriesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this category?')) return
     try {
-      await fetch(`/api/admin/categories/${id}`, { method: 'DELETE' })
+      await authFetch(`/api/admin/categories/${id}`, { method: 'DELETE' })
       toast.success('Category deleted')
       fetchCategories()
     } catch { toast.error('Failed to delete') }

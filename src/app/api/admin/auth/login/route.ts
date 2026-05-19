@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +14,29 @@ export async function POST(request: NextRequest) {
       where: { email, isActive: true },
     })
 
-    if (!admin || admin.passwordHash !== password) {
+    if (!admin) {
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+    }
+
+    // Support both hashed passwords (new) and plaintext (legacy migration)
+    let passwordMatch = false
+    if (admin.passwordHash.startsWith('$2a$') || admin.passwordHash.startsWith('$2b$')) {
+      // Hashed password
+      passwordMatch = await bcrypt.compare(password, admin.passwordHash)
+    } else {
+      // Legacy plaintext password (auto-migrate on next login)
+      passwordMatch = admin.passwordHash === password
+      if (passwordMatch) {
+        // Auto-migrate to hashed password
+        const hashedPassword = await bcrypt.hash(password, 10)
+        await db.admin.update({
+          where: { id: admin.id },
+          data: { passwordHash: hashedPassword },
+        })
+      }
+    }
+
+    if (!passwordMatch) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 

@@ -1,17 +1,19 @@
 import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
 async function main() {
   console.log('🌱 Seeding database...')
 
-  // 1. Create Super Admin
+  // 1. Create Super Admin (with hashed password)
+  const hashedPassword = await bcrypt.hash('admin123', 10)
   const admin = await prisma.admin.upsert({
     where: { email: 'admin@telanganajyothi.com' },
     update: {},
     create: {
       email: 'admin@telanganajyothi.com',
-      passwordHash: 'admin123',
+      passwordHash: hashedPassword,
       name: 'Super Admin',
       role: 'super_admin',
       isActive: true,
@@ -29,7 +31,7 @@ async function main() {
     await prisma.admin.upsert({
       where: { email: a.email },
       update: {},
-      create: { email: a.email, passwordHash: 'admin123', name: a.name, role: a.role, isActive: true },
+      create: { email: a.email, passwordHash: hashedPassword, name: a.name, role: a.role, isActive: true },
     })
   }
   console.log(`✅ ${adminsData.length + 1} admins created`)

@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, UserCheck, UserX } from 'lucide-react'
+import { authFetch, authFetchJSON } from '@/lib/utils'
 
 interface ReporterItem {
   id: string
@@ -53,7 +54,7 @@ export default function ReportersPage() {
   const fetchReporters = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/admin/reporters')
+      const res = await authFetch('/api/admin/reporters')
       setReporters(await res.json())
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
@@ -61,22 +62,20 @@ export default function ReportersPage() {
 
   useEffect(() => {
     fetchReporters()
-    fetch('/api/admin/districts').then(r => r.json()).then(setDistricts).catch(console.error)
+    authFetch('/api/admin/districts').then(r => r.json()).then(setDistricts).catch(console.error)
   }, [fetchReporters])
 
   const handleSave = async () => {
     try {
       if (editItem) {
-        await fetch(`/api/admin/reporters/${editItem.id}`, {
+        await authFetchJSON(`/api/admin/reporters/${editItem.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(form),
         })
         toast.success('Reporter updated')
       } else {
-        await fetch('/api/admin/reporters', {
+        await authFetchJSON('/api/admin/reporters', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(form),
         })
         toast.success('Reporter created')
@@ -90,7 +89,7 @@ export default function ReportersPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this reporter?')) return
     try {
-      await fetch(`/api/admin/reporters/${id}`, { method: 'DELETE' })
+      await authFetch(`/api/admin/reporters/${id}`, { method: 'DELETE' })
       toast.success('Reporter deleted')
       fetchReporters()
     } catch { toast.error('Failed to delete') }

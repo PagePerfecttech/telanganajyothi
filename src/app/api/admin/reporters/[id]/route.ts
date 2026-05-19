@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { logAudit, getClientIp } from '@/lib/audit'
 
 export async function GET(
   _request: NextRequest,
@@ -37,20 +38,29 @@ export async function PUT(
   try {
     const { id } = await params
     const data = await request.json()
+    const updateData = {
+      name: data.name,
+      phone: data.phone,
+      email: data.email || null,
+      avatar: data.avatar || null,
+      bio: data.bio || null,
+      stateId: data.stateId,
+      districtId: data.districtId,
+      beat: data.beat || null,
+      status: data.status,
+      canPublishDirectly: data.canPublishDirectly,
+    }
     const reporter = await db.reporter.update({
       where: { id },
-      data: {
-        name: data.name,
-        phone: data.phone,
-        email: data.email || null,
-        avatar: data.avatar || null,
-        bio: data.bio || null,
-        stateId: data.stateId,
-        districtId: data.districtId,
-        beat: data.beat || null,
-        status: data.status,
-        canPublishDirectly: data.canPublishDirectly,
-      },
+      data: updateData,
+    })
+    await logAudit({
+      adminId: data.updatedBy || data.adminId || 'system',
+      action: 'update',
+      entity: 'reporter',
+      entityId: id,
+      ipAddress: getClientIp(request),
+      changes: updateData,
     })
     return NextResponse.json(reporter)
   } catch (error) {
@@ -60,12 +70,19 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
     await db.reporter.update({ where: { id }, data: { deletedAt: new Date() } })
+    await logAudit({
+      adminId: 'system',
+      action: 'delete',
+      entity: 'reporter',
+      entityId: id,
+      ipAddress: getClientIp(request),
+    })
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Reporter delete error:', error)

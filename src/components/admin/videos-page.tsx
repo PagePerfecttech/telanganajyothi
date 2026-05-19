@@ -61,6 +61,7 @@ import {
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { authFetch, authFetchJSON } from '@/lib/utils'
 
 interface VideoItem {
   id: string
@@ -172,7 +173,7 @@ export default function VideosPage() {
   const fetchVideos = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/videos')
+      const res = await authFetch('/api/admin/videos')
       if (!res.ok) throw new Error('Failed to fetch videos')
       const data = await res.json()
       setVideos(Array.isArray(data) ? data : [])
@@ -185,7 +186,7 @@ export default function VideosPage() {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/categories')
+      const res = await authFetch('/api/admin/categories')
       if (!res.ok) throw new Error('Failed to fetch categories')
       const data = await res.json()
       setCategories(Array.isArray(data) ? data : [])
@@ -254,15 +255,13 @@ export default function VideosPage() {
 
       let res: Response
       if (editingVideo) {
-        res = await fetch(`/api/admin/videos/${editingVideo.id}`, {
+        res = await authFetchJSON(`/api/admin/videos/${editingVideo.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
       } else {
-        res = await fetch('/api/admin/videos', {
+        res = await authFetchJSON('/api/admin/videos', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
       }
@@ -283,7 +282,7 @@ export default function VideosPage() {
     if (!deleteTarget) return
     setDeleting(true)
     try {
-      const res = await fetch(`/api/admin/videos/${deleteTarget.id}`, {
+      const res = await authFetch(`/api/admin/videos/${deleteTarget.id}`, {
         method: 'DELETE',
       })
       if (!res.ok) throw new Error('Failed to delete video')
@@ -302,7 +301,7 @@ export default function VideosPage() {
     try {
       const uploadForm = new FormData()
       uploadForm.append('file', file)
-      const res = await fetch('/api/admin/media/upload', {
+      const res = await authFetch('/api/admin/media/upload', {
         method: 'POST',
         body: uploadForm,
       })

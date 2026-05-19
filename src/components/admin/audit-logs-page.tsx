@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { FileText } from 'lucide-react'
+import { authFetch } from '@/lib/utils'
 
 interface AuditLogItem {
   id: string
@@ -29,7 +30,7 @@ export default function AuditLogsPage() {
       setLoading(true)
       const params = new URLSearchParams({ limit: '100' })
       if (entityFilter) params.set('entity', entityFilter)
-      const res = await fetch(`/api/admin/audit-logs?${params}`)
+      const res = await authFetch(`/api/admin/audit-logs?${params}`)
       setLogs(await res.json())
     } catch (err) { console.error(err) }
     finally { setLoading(false) }

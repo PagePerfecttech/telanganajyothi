@@ -62,6 +62,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { authFetch, authFetchJSON } from '@/lib/utils'
 
 interface AdminItem {
   id: string
@@ -131,7 +132,7 @@ export default function AdminsPage() {
   const fetchAdmins = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/admin/admins')
+      const res = await authFetch('/api/admin/admins')
       if (!res.ok) throw new Error('Failed to fetch admins')
       const data = await res.json()
       setAdmins(Array.isArray(data) ? data : data.admins ?? [])
@@ -188,9 +189,8 @@ export default function AdminsPage() {
 
     setSubmitting(true)
     try {
-      const res = await fetch('/api/admin/admins', {
+      const res = await authFetchJSON('/api/admin/admins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formName.trim(),
           email: formEmail.trim(),
@@ -237,9 +237,8 @@ export default function AdminsPage() {
         body.password = formPassword
       }
 
-      const res = await fetch(`/api/admin/admins/${selectedAdmin.id}`, {
+      const res = await authFetchJSON(`/api/admin/admins/${selectedAdmin.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
       if (!res.ok) {
@@ -263,7 +262,7 @@ export default function AdminsPage() {
 
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/admin/admins/${selectedAdmin.id}`, {
+      const res = await authFetch(`/api/admin/admins/${selectedAdmin.id}`, {
         method: 'DELETE',
       })
       if (!res.ok) {

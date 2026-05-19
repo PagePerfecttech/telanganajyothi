@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Hash,
 } from 'lucide-react'
+import { authFetch, authFetchJSON } from '@/lib/utils'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -126,7 +127,7 @@ export default function TagsPage() {
   const fetchTags = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/admin/tags')
+      const res = await authFetch('/api/admin/tags')
       if (!res.ok) throw new Error('Failed to fetch tags')
       const data = await res.json()
       setTags(Array.isArray(data) ? data : [])
@@ -204,9 +205,8 @@ export default function TagsPage() {
         : '/api/admin/tags'
       const method = editingTag ? 'PUT' : 'POST'
 
-      const res = await fetch(url, {
+      const res = await authFetchJSON(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       })
 
@@ -229,9 +229,8 @@ export default function TagsPage() {
   const handleTrendingToggle = async (tag: TagItem) => {
     try {
       setTogglingTrendingId(tag.id)
-      const res = await fetch(`/api/admin/tags/${tag.id}`, {
+      const res = await authFetchJSON(`/api/admin/tags/${tag.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isTrending: !tag.isTrending }),
       })
 
@@ -258,7 +257,7 @@ export default function TagsPage() {
 
     try {
       setDeleting(true)
-      const res = await fetch(`/api/admin/tags/${deletingTag.id}`, {
+      const res = await authFetch(`/api/admin/tags/${deletingTag.id}`, {
         method: 'DELETE',
       })
 

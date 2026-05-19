@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   ShieldX,
 } from 'lucide-react'
+import { authFetch, authFetchJSON } from '@/lib/utils'
 
 interface UserItem {
   id: string
@@ -98,7 +99,7 @@ export default function UsersPage() {
       if (search) params.set('search', search)
       if (districtId) params.set('districtId', districtId)
 
-      const res = await fetch(`/api/admin/users?${params.toString()}`)
+      const res = await authFetch(`/api/admin/users?${params.toString()}`)
       const data: UsersResponse = await res.json()
       setUsers(data.users)
       setTotal(data.total)
@@ -115,7 +116,7 @@ export default function UsersPage() {
   }, [fetchUsers])
 
   useEffect(() => {
-    fetch('/api/admin/districts')
+    authFetch('/api/admin/districts')
       .then((r) => r.json())
       .then(setDistricts)
       .catch(console.error)
@@ -153,9 +154,8 @@ export default function UsersPage() {
     if (!editUser) return
     try {
       setSaving(true)
-      const res = await fetch(`/api/admin/users/${editUser.id}`, {
+      const res = await authFetchJSON(`/api/admin/users/${editUser.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
       })
       if (!res.ok) throw new Error('Failed to update')
@@ -177,9 +177,8 @@ export default function UsersPage() {
       prev.map((u) => (u.id === user.id ? { ...u, isPremium: newPremium } : u))
     )
     try {
-      const res = await fetch(`/api/admin/users/${user.id}`, {
+      const res = await authFetchJSON(`/api/admin/users/${user.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isPremium: newPremium }),
       })
       if (!res.ok) throw new Error('Failed to toggle premium')
@@ -196,7 +195,7 @@ export default function UsersPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
-      const res = await fetch(`/api/admin/users/${deleteTarget.id}`, {
+      const res = await authFetch(`/api/admin/users/${deleteTarget.id}`, {
         method: 'DELETE',
       })
       if (!res.ok) throw new Error('Failed to delete')
