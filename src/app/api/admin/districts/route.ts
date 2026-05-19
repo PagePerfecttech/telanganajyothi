@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { logAudit, getClientIp } from '@/lib/audit'
+import { verifyAuth } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { searchParams } = new URL(request.url)
     const stateId = searchParams.get('stateId')
 
@@ -27,12 +30,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const data = await request.json()
 
     if (Array.isArray(data)) {
       const districts = await db.district.createMany({ data: data.map((d: { name: string; stateId: string; isActive?: boolean }) => ({ name: d.name, stateId: d.stateId, isActive: d.isActive ?? true })) })
       await logAudit({
-        adminId: data[0]?.createdBy || data[0]?.adminId || 'system',
+        adminId: admin.id,
         action: 'create',
         entity: 'district',
         ipAddress: getClientIp(request),
@@ -49,7 +54,7 @@ export async function POST(request: NextRequest) {
       },
     })
     await logAudit({
-      adminId: data.createdBy || data.adminId || 'system',
+      adminId: admin.id,
       action: 'create',
       entity: 'district',
       entityId: district.id,
@@ -65,6 +70,8 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const data = await request.json()
     const { id, ...updateData } = data
 
@@ -81,7 +88,7 @@ export async function PUT(request: NextRequest) {
       },
     })
     await logAudit({
-      adminId: data.updatedBy || data.adminId || 'system',
+      adminId: admin.id,
       action: 'update',
       entity: 'district',
       entityId: id,
@@ -97,6 +104,8 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const data = await request.json()
     const { id } = data
 
@@ -104,12 +113,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'District ID is required' }, { status: 400 })
     }
 
-    const district = await db.district.update({
+    await db.district.update({
       where: { id },
       data: { deletedAt: new Date(), isActive: false },
     })
     await logAudit({
-      adminId: 'system',
+      adminId: admin.id,
       action: 'delete',
       entity: 'district',
       entityId: id,

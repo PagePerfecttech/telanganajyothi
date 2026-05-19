@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { logAudit, getClientIp } from '@/lib/audit'
+import { verifyAuth } from '@/lib/auth'
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { id } = await params
     const data = await request.json()
 
@@ -19,13 +22,13 @@ export async function PUT(
     if (data.avatar !== undefined) updateData.avatar = data.avatar
     if (data.password) updateData.passwordHash = await bcrypt.hash(data.password, 10)
 
-    const admin = await db.admin.update({
+    const updatedAdmin = await db.admin.update({
       where: { id },
       data: updateData,
     })
 
     await logAudit({
-      adminId: data.updatedBy || data.adminId || 'system',
+      adminId: admin.id,
       action: 'update',
       entity: 'admin',
       entityId: id,
@@ -34,11 +37,11 @@ export async function PUT(
     })
 
     return NextResponse.json({
-      id: admin.id,
-      email: admin.email,
-      name: admin.name,
-      role: admin.role,
-      isActive: admin.isActive,
+      id: updatedAdmin.id,
+      email: updatedAdmin.email,
+      name: updatedAdmin.name,
+      role: updatedAdmin.role,
+      isActive: updatedAdmin.isActive,
     })
   } catch (error) {
     console.error('Admin update error:', error)
@@ -51,10 +54,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { id } = await params
     await db.admin.update({ where: { id }, data: { deletedAt: new Date(), isActive: false } })
     await logAudit({
-      adminId: 'system',
+      adminId: admin.id,
       action: 'delete',
       entity: 'admin',
       entityId: id,

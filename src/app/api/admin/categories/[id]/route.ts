@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { logAudit, getClientIp } from '@/lib/audit'
+import { verifyAuth } from '@/lib/auth'
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { id } = await params
     const category = await db.category.findUnique({ where: { id, deletedAt: null } })
     if (!category) {
@@ -24,6 +27,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { id } = await params
     const data = await request.json()
     const updateData = {
@@ -39,7 +44,7 @@ export async function PUT(
       data: updateData,
     })
     await logAudit({
-      adminId: data.updatedBy || data.adminId || 'system',
+      adminId: admin.id,
       action: 'update',
       entity: 'category',
       entityId: id,
@@ -58,10 +63,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { id } = await params
     await db.category.update({ where: { id }, data: { deletedAt: new Date() } })
     await logAudit({
-      adminId: 'system',
+      adminId: admin.id,
       action: 'delete',
       entity: 'category',
       entityId: id,

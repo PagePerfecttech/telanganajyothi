@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { verifyAuth } from '@/lib/auth'
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     const { id } = await params
     const news = await db.news.findUnique({
       where: { id, deletedAt: null },
@@ -38,6 +42,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     const { id } = await params
     const data = await request.json()
 
@@ -81,17 +88,15 @@ export async function PUT(
     }
 
     // Audit log
-    if (data.updatedBy) {
-      await db.auditLog.create({
-        data: {
-          adminId: data.updatedBy,
-          action: 'update',
-          entity: 'news',
-          entityId: id,
-          changes: JSON.stringify({ title: data.title, status: data.status }),
-        },
-      })
-    }
+    await db.auditLog.create({
+      data: {
+        adminId: admin.id,
+        action: 'update',
+        entity: 'news',
+        entityId: id,
+        changes: JSON.stringify({ title: data.title, status: data.status }),
+      },
+    })
 
     return NextResponse.json({ ...news, imagesUrls: JSON.parse(news.imagesUrls || '[]') })
   } catch (error) {
@@ -105,6 +110,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     const { id } = await params
     const data = await request.json()
 
@@ -121,17 +129,15 @@ export async function PATCH(
       data: updateData,
     })
 
-    if (data.adminId) {
-      await db.auditLog.create({
-        data: {
-          adminId: data.adminId,
-          action: `status_${data.status}`,
-          entity: 'news',
-          entityId: id,
-          changes: JSON.stringify({ status: data.status, rejectReason: data.rejectReason }),
-        },
-      })
-    }
+    await db.auditLog.create({
+      data: {
+        adminId: admin.id,
+        action: `status_${data.status}`,
+        entity: 'news',
+        entityId: id,
+        changes: JSON.stringify({ status: data.status, rejectReason: data.rejectReason }),
+      },
+    })
 
     return NextResponse.json(news)
   } catch (error) {
@@ -141,14 +147,27 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     const { id } = await params
     await db.news.update({
       where: { id },
       data: { deletedAt: new Date() },
+    })
+
+    await db.auditLog.create({
+      data: {
+        adminId: admin.id,
+        action: 'delete',
+        entity: 'news',
+        entityId: id,
+        changes: '{}',
+      },
     })
 
     return NextResponse.json({ success: true })

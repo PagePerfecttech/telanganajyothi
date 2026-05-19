@@ -32,10 +32,12 @@ interface AppState {
   isAuthenticated: boolean
   currentUser: AdminUser | null
   sidebarOpen: boolean
-  setActiveView: (view: ViewType) => void
+  pendingAction: string | null
+  setActiveView: (view: ViewType, action?: string | null) => void
   setAuthenticated: (auth: boolean) => void
   setCurrentUser: (user: AdminUser | null) => void
   setSidebarOpen: (open: boolean) => void
+  setPendingAction: (action: string | null) => void
   logout: () => void
 }
 
@@ -46,15 +48,18 @@ export const useAppStore = create<AppState>()(
       isAuthenticated: false,
       currentUser: null,
       sidebarOpen: true,
-      setActiveView: (view) => set({ activeView: view }),
+      pendingAction: null,
+      setActiveView: (view, action) => set({ activeView: view, pendingAction: action || null }),
       setAuthenticated: (auth) => set({ isAuthenticated: auth }),
       setCurrentUser: (user) => set({ currentUser: user }),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
+      setPendingAction: (action) => set({ pendingAction: action }),
       logout: () =>
         set({
           isAuthenticated: false,
           currentUser: null,
           activeView: 'dashboard',
+          pendingAction: null,
         }),
     }),
     {

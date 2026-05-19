@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { logAudit, getClientIp } from '@/lib/audit'
+import { verifyAuth } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const admins = await db.admin.findMany({
       where: { deletedAt: null },
       select: {
@@ -28,10 +31,12 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const data = await request.json()
     const plainPassword = data.password || 'password123'
     const hashedPassword = await bcrypt.hash(plainPassword, 10)
-    const admin = await db.admin.create({
+    const newAdmin = await db.admin.create({
       data: {
         email: data.email,
         passwordHash: hashedPassword,
@@ -42,20 +47,20 @@ export async function POST(request: NextRequest) {
       },
     })
     await logAudit({
-      adminId: data.createdBy || data.adminId || 'system',
+      adminId: admin.id,
       action: 'create',
       entity: 'admin',
-      entityId: admin.id,
+      entityId: newAdmin.id,
       ipAddress: getClientIp(request),
       changes: { email: data.email, name: data.name, role: data.role || 'editor' },
     })
     return NextResponse.json({
-      id: admin.id,
-      email: admin.email,
-      name: admin.name,
-      role: admin.role,
-      isActive: admin.isActive,
-      createdAt: admin.createdAt,
+      id: newAdmin.id,
+      email: newAdmin.email,
+      name: newAdmin.name,
+      role: newAdmin.role,
+      isActive: newAdmin.isActive,
+      createdAt: newAdmin.createdAt,
     }, { status: 201 })
   } catch (error) {
     console.error('Admin create error:', error)

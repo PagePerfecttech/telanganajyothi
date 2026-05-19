@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { verifyAuth } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
     const districtId = searchParams.get('districtId')

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { logAudit, getClientIp } from '@/lib/audit'
+import { verifyAuth } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const settings = await db.setting.findMany({ orderBy: { key: 'asc' } })
     const settingsMap: Record<string, string> = {}
     for (const s of settings) {
@@ -18,6 +21,8 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const data = await request.json()
 
     const updates = Object.entries(data).map(([key, value]) =>
@@ -30,7 +35,7 @@ export async function PUT(request: NextRequest) {
 
     await Promise.all(updates)
     await logAudit({
-      adminId: 'system',
+      adminId: admin.id,
       action: 'settings_update',
       entity: 'settings',
       ipAddress: getClientIp(request),

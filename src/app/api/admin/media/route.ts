@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { verifyAuth } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const media = await db.media.findMany({
       where: { deletedAt: null },
       orderBy: { createdAt: 'desc' },
@@ -16,6 +19,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const data = await request.json()
     const media = await db.media.create({
       data: {

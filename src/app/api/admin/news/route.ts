@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { verifyAuth } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const categoryId = searchParams.get('categoryId')
@@ -56,6 +60,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     const data = await request.json()
 
     // Get Telangana state ID if not provided
@@ -83,7 +90,7 @@ export async function POST(request: NextRequest) {
         isFeatured: data.isFeatured || false,
         publishedAt: data.status === 'published' ? new Date() : null,
         expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
-        createdBy: data.createdBy,
+        createdBy: admin.id,
       },
     })
 
@@ -98,17 +105,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Audit log
-    if (data.createdBy) {
-      await db.auditLog.create({
-        data: {
-          adminId: data.createdBy,
-          action: 'create',
-          entity: 'news',
-          entityId: news.id,
-          changes: JSON.stringify({ title: data.title }),
-        },
-      })
-    }
+    await db.auditLog.create({
+      data: {
+        adminId: admin.id,
+        action: 'create',
+        entity: 'news',
+        entityId: news.id,
+        changes: JSON.stringify({ title: data.title }),
+      },
+    })
 
     return NextResponse.json({ ...news, imagesUrls: JSON.parse(news.imagesUrls || '[]') }, { status: 201 })
   } catch (error) {

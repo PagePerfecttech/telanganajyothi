@@ -37,7 +37,8 @@ interface NewsItem {
 }
 
 interface Category { id: string; name: string }
-interface District { id: string; name: string }
+interface State { id: string; name: string; code: string }
+interface District { id: string; name: string; stateId: string }
 interface Reporter { id: string; name: string }
 interface Tag { id: string; name: string; slug: string; type: string }
 
@@ -56,7 +57,7 @@ const priorityColors: Record<string, string> = {
 }
 
 export default function NewsPage() {
-  const { currentUser } = useAppStore()
+  const { currentUser, pendingAction, setPendingAction } = useAppStore()
   const [news, setNews] = useState<NewsItem[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -66,6 +67,7 @@ export default function NewsPage() {
   const [filterCategory, setFilterCategory] = useState('')
   const [filterPriority, setFilterPriority] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
+  const [states, setStates] = useState<State[]>([])
   const [districts, setDistricts] = useState<District[]>([])
   const [reporters, setReporters] = useState<Reporter[]>([])
   const [tags, setTags] = useState<Tag[]>([])
@@ -104,13 +106,15 @@ export default function NewsPage() {
   useEffect(() => {
     const loadDeps = async () => {
       try {
-        const [cats, dists, reps, tagList] = await Promise.all([
+        const [cats, stateList, dists, reps, tagList] = await Promise.all([
           authFetchJson<Category[]>('/api/admin/categories'),
+          authFetchJson<State[]>('/api/admin/states'),
           authFetchJson<District[]>('/api/admin/districts'),
           authFetchJson<Reporter[]>('/api/admin/reporters'),
           authFetchJson<Tag[]>('/api/admin/tags'),
         ])
         setCategories(cats)
+        setStates(stateList)
         setDistricts(dists)
         setReporters(reps)
         setTags(tagList)
@@ -126,6 +130,14 @@ export default function NewsPage() {
       fetchNews()
     }
   }, [fetchNews, formMode])
+
+  // Handle pending action from dashboard (e.g., "Create Breaking News")
+  useEffect(() => {
+    if (pendingAction === 'create-breaking' || pendingAction === 'create') {
+      setPendingAction(null)
+      openCreateForm()
+    }
+  }, [pendingAction, setPendingAction])
 
   const handleStatusChange = async (id: string, status: string) => {
     try {
@@ -208,6 +220,7 @@ export default function NewsPage() {
         onSave={handleFormSave}
         onCancel={handleFormCancel}
         categories={categories}
+        states={states}
         districts={districts}
         reporters={reporters}
         tags={tags}
@@ -304,7 +317,7 @@ export default function NewsPage() {
                         {item.tags?.length > 0 && (
                           <div className="flex gap-1 mt-1">
                             {item.tags.slice(0, 3).map(t => (
-                              <span key={t.slug} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">{t.tag.name}</span>
+                              <span key={t.tag.slug} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">{t.tag.name}</span>
                             ))}
                             {item.tags.length > 3 && <span className="text-[10px] text-muted-foreground">+{item.tags.length - 3}</span>}
                           </div>
@@ -391,18 +404,19 @@ export default function NewsPage() {
 // Full-Page News Form Component
 // ============================================================
 function NewsFormPage({
-  editItemId, onSave, onCancel, categories, districts, reporters, tags,
+  editItemId, onSave, onCancel, categories, states, districts, reporters, tags,
 }: {
   editItemId: string | null
   onSave: (data: Record<string, unknown>) => void
   onCancel: () => void
   categories: Category[]
+  states: State[]
   districts: District[]
   reporters: Reporter[]
   tags: Tag[]
 }) {
   const [form, setForm] = useState<Record<string, unknown>>({
-    title: '', shortDesc: '', content: '', categoryId: '', districtId: '',
+    title: '', shortDesc: '', content: '', categoryId: '', stateId: '', districtId: '',
     thumbnailUrl: '', imagesUrls: [] as string[], videoUrl: '', sourceType: 'original', reporterId: '',
     priority: 'normal', status: 'draft', isFeatured: false, tagIds: [] as string[],
   })
@@ -417,21 +431,32 @@ function NewsFormPage({
     if (editItemId && !loaded) {
       authFetchJson<Record<string, unknown>>(`/api/admin/news/${editItemId}`)
         .then(data => {
+          // Robustly extract tag IDs from the API response
+          const tagIds = Array.isArray(data.tags)
+            ? data.tags
+                .map((t: Record<string, unknown>) => {
+                  const tag = t.tag as Record<string, unknown> | undefined
+                  return tag?.id as string | undefined
+                })
+                .filter((id: string | undefined): id is string => !!id)
+            : []
+
           setForm({
             title: data.title || '',
             shortDesc: data.shortDesc || '',
             content: data.content || '',
             categoryId: data.categoryId || '',
+            stateId: data.stateId || '',
             districtId: data.districtId || '',
             thumbnailUrl: data.thumbnailUrl || '',
-            imagesUrls: data.imagesUrls || [],
+            imagesUrls: Array.isArray(data.imagesUrls) ? data.imagesUrls : [],
             videoUrl: data.videoUrl || '',
             sourceType: data.sourceType || 'original',
             reporterId: data.reporterId || '',
             priority: data.priority || 'normal',
             status: data.status || 'draft',
             isFeatured: data.isFeatured || false,
-            tagIds: (data.tags as { tag: { id: string } }[])?.map((t) => t.tag.id) || [],
+            tagIds,
           })
           setLoaded(true)
           setPageLoading(false)
@@ -514,6 +539,10 @@ function NewsFormPage({
     }
     if (!form.categoryId) {
       toast.error('Category is required')
+      return
+    }
+    if (!form.stateId) {
+      toast.error('State is required')
       return
     }
     setSaving(true)
@@ -624,7 +653,7 @@ function NewsFormPage({
                     <input type="file" accept="image/*" className="hidden" onChange={handleThumbnailUpload} />
                   </label>
                 </div>
-                {form.thumbnailUrl && (
+                {(form.thumbnailUrl as string) && (
                   <div className="relative inline-block">
                     <img src={form.thumbnailUrl as string} alt="Preview" className="h-24 w-40 object-cover rounded-lg border" />
                     <button
@@ -704,6 +733,23 @@ function NewsFormPage({
                 </Select>
               </div>
 
+              {/* State */}
+              <div className="space-y-2">
+                <Label>State *</Label>
+                <Select value={(form.stateId as string) || 'none'} onValueChange={(v) => {
+                  const newStateId = v === 'none' ? '' : v
+                  updateField('stateId', newStateId)
+                  // Reset district when state changes
+                  updateField('districtId', '')
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Select state</SelectItem>
+                    {states.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* District */}
               <div className="space-y-2">
                 <Label>District</Label>
@@ -711,7 +757,10 @@ function NewsFormPage({
                   <SelectTrigger><SelectValue placeholder="Select district" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Statewide</SelectItem>
-                    {districts.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                    {(form.stateId
+                      ? districts.filter(d => d.stateId === form.stateId)
+                      : districts
+                    ).map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

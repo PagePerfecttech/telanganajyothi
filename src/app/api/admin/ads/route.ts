@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { logAudit, getClientIp } from '@/lib/audit'
+import { verifyAuth } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const ads = await db.customAd.findMany({
       where: { deletedAt: null },
       orderBy: { createdAt: 'desc' },
@@ -24,6 +27,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const data = await request.json()
     // Map 'poster' to 'image' for DB storage
     const adType = data.type === 'poster' ? 'image' : data.type || 'image'
@@ -48,7 +53,7 @@ export async function POST(request: NextRequest) {
       },
     })
     await logAudit({
-      adminId: data.createdBy || data.adminId || 'system',
+      adminId: admin.id,
       action: 'create',
       entity: 'ad',
       entityId: ad.id,

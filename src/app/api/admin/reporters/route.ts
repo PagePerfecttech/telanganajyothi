@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { logAudit, getClientIp } from '@/lib/audit'
+import { verifyAuth } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const reporters = await db.reporter.findMany({
       where: { deletedAt: null },
       include: {
@@ -22,6 +25,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const data = await request.json()
     const reporter = await db.reporter.create({
       data: {
@@ -38,7 +43,7 @@ export async function POST(request: NextRequest) {
       },
     })
     await logAudit({
-      adminId: data.createdBy || data.adminId || 'system',
+      adminId: admin.id,
       action: 'create',
       entity: 'reporter',
       entityId: reporter.id,

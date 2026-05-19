@@ -28,6 +28,8 @@ const COLORS = ['#DC2626', '#7C3AED', '#059669', '#D97706', '#2563EB', '#0891B2'
 
 export default function DashboardPage() {
   const { setActiveView } = useAppStore()
+  // Clear any pending action when viewing dashboard
+  const { setPendingAction } = useAppStore()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -99,15 +101,15 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-3">
-        <Button className="bg-red-600 hover:bg-red-700" onClick={() => setActiveView('news')}>
+        <Button className="bg-red-600 hover:bg-red-700" onClick={() => setActiveView('news', 'create-breaking')}>
           <Plus className="h-4 w-4 mr-2" />
           Create Breaking News
         </Button>
-        <Button variant="outline" onClick={() => setActiveView('notifications')}>
+        <Button variant="outline" onClick={() => setActiveView('notifications', 'create')}>
           <Bell className="h-4 w-4 mr-2" />
           Send Push Notification
         </Button>
-        <Button variant="outline" onClick={() => setActiveView('videos')}>
+        <Button variant="outline" onClick={() => setActiveView('videos', 'create')}>
           <Newspaper className="h-4 w-4 mr-2" />
           Manage Videos
         </Button>

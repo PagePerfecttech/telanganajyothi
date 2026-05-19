@@ -4,9 +4,12 @@ import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 import { existsSync } from 'fs'
 import { logAudit, getClientIp } from '@/lib/audit'
+import { verifyAuth } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const formData = await request.formData()
     const file = formData.get('file') as File | null
 
@@ -63,7 +66,7 @@ export async function POST(request: NextRequest) {
     })
 
     await logAudit({
-      adminId: (formData.get('uploadedBy') as string) || 'system',
+      adminId: admin.id,
       action: 'upload',
       entity: 'media',
       entityId: media.id,

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { logAudit, getClientIp } from '@/lib/audit'
+import { verifyAuth } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const categories = await db.category.findMany({
       where: { deletedAt: null },
       include: { _count: { select: { news: true } } },
@@ -18,6 +21,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const admin = await verifyAuth(request)
+    if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const data = await request.json()
     const category = await db.category.create({
       data: {
@@ -30,7 +35,7 @@ export async function POST(request: NextRequest) {
       },
     })
     await logAudit({
-      adminId: data.createdBy || data.adminId || 'system',
+      adminId: admin.id,
       action: 'create',
       entity: 'category',
       entityId: category.id,
