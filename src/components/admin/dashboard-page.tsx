@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useAppStore } from '@/lib/store'
-import { authFetch } from '@/lib/utils'
+import { authFetchJson } from '@/lib/utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from 'sonner'
 import { Newspaper, Users, Eye, Clock, UserCheck, Send, Plus, Bell } from 'lucide-react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
@@ -36,11 +37,10 @@ export default function DashboardPage() {
 
   const fetchDashboard = async () => {
     try {
-      const res = await authFetch('/api/admin/dashboard')
-      const d = await res.json()
+      const d = await authFetchJson<DashboardData>('/api/admin/dashboard')
       setData(d)
-    } catch (err) {
-      console.error('Dashboard fetch error:', err)
+    } catch {
+      toast.error('Failed to load dashboard')
     } finally {
       setLoading(false)
     }

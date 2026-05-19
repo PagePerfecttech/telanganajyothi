@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
 import { Plus, Trash2, Bell, Send } from 'lucide-react'
-import { authFetch, authFetchJSON } from '@/lib/utils'
+import { authFetch, authFetchJSON, authFetchJson } from '@/lib/utils'
 
 interface NotificationItem {
   id: string
@@ -49,9 +49,9 @@ export default function NotificationsPage() {
   const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await authFetch('/api/admin/notifications')
-      setNotifications(await res.json())
-    } catch (err) { console.error(err) }
+      const data = await authFetchJson<NotificationItem[]>('/api/admin/notifications')
+      setNotifications(data)
+    } catch { toast.error('Failed to load notifications') }
     finally { setLoading(false) }
   }, [])
 

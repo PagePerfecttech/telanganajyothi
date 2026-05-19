@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public routes that don't need authentication
   if (
-    pathname === '/api' || // Health check
-    pathname === '/api/' || // Health check with trailing slash
-    pathname.startsWith('/api/mobile/') || // Mobile app API
-    pathname === '/api/admin/auth/login' || // Admin login
-    pathname.startsWith('/api/admin/auth/login/') // Admin login variations
+    pathname === '/api' ||
+    pathname === '/api/' ||
+    pathname.startsWith('/api/mobile/') ||
+    pathname === '/api/admin/auth/login' ||
+    pathname.startsWith('/api/admin/auth/login/')
   ) {
     return NextResponse.next()
   }

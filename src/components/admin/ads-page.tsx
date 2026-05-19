@@ -12,8 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, ImageIcon, Film, Upload, X, Megaphone, Settings, Play, LayoutGrid } from 'lucide-react'
-import { authFetch, authFetchJSON } from '@/lib/utils'
+import { Plus, Pencil, Trash2, ImageIcon, Film, Upload, X, Megaphone, Settings, Play, LayoutGrid, ArrowLeft, Save, Loader2 } from 'lucide-react'
+import { authFetch, authFetchJSON, authFetchJson } from '@/lib/utils'
 
 interface AdItem {
   id: string
@@ -46,57 +46,40 @@ const defaultForm = {
 export default function AdsPage() {
   const [ads, setAds] = useState<AdItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editItem, setEditItem] = useState<AdItem | null>(null)
   const [activeTab, setActiveTab] = useState('poster')
   const [settings, setSettings] = useState<Record<string, string>>({})
-  const [form, setForm] = useState<Record<string, unknown>>({ ...defaultForm })
-  const [uploading, setUploading] = useState(false)
+
+  // Page-based form state
+  const [formMode, setFormMode] = useState<'list' | 'create' | 'edit'>('list')
+  const [editItem, setEditItem] = useState<AdItem | null>(null)
+  const [formType, setFormType] = useState<'poster' | 'video'>('poster')
 
   const fetchAds = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await authFetch('/api/admin/ads')
-      setAds(await res.json())
-    } catch (err) { console.error(err) }
-    finally { setLoading(false) }
+      const data = await authFetchJson<AdItem[]>('/api/admin/ads')
+      setAds(data)
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to load ads')
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await authFetch('/api/admin/settings')
-      setSettings(await res.json())
-    } catch (err) { console.error(err) }
+      const data = await authFetchJson<Record<string, string>>('/api/admin/settings')
+      setSettings(data)
+    } catch (err) {
+      console.error(err)
+    }
   }, [])
 
   useEffect(() => { fetchAds(); fetchSettings() }, [fetchAds, fetchSettings])
 
   const posterAds = ads.filter(a => a.type === 'image' || a.type === 'poster')
   const videoAds = ads.filter(a => a.type === 'video')
-
-  const handleSave = async () => {
-    try {
-      // Ensure type matches the tab
-      const submitData = { ...form }
-
-      if (editItem) {
-        await authFetchJSON(`/api/admin/ads/${editItem.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(submitData),
-        })
-        toast.success('Ad updated')
-      } else {
-        await authFetchJSON('/api/admin/ads', {
-          method: 'POST',
-          body: JSON.stringify(submitData),
-        })
-        toast.success('Ad created')
-      }
-      setDialogOpen(false)
-      setEditItem(null)
-      fetchAds()
-    } catch { toast.error('Failed to save ad') }
-  }
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this ad?')) return
@@ -117,47 +100,46 @@ export default function AdsPage() {
     } catch { toast.error('Failed to save settings') }
   }
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const res = await authFetch('/api/admin/media/upload', { method: 'POST', body: formData })
-      const data = await res.json()
-      if (data.url) {
-        const current = (form.imagesUrls as string[]) || []
-        setForm(p => ({ ...p, imagesUrls: [...current, data.url] }))
-        toast.success('Image uploaded')
-      }
-    } catch {
-      toast.error('Upload failed')
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const removeImage = (index: number) => {
-    const current = (form.imagesUrls as string[]) || []
-    setForm(p => ({ ...p, imagesUrls: current.filter((_, i) => i !== index) }))
-  }
-
   const openCreate = (type: 'poster' | 'video') => {
     setEditItem(null)
-    setForm({ ...defaultForm, type, layout: type === 'poster' ? 'grid' : '', frequency: 5 })
-    setDialogOpen(true)
+    setFormType(type)
+    setFormMode('create')
   }
 
   const openEdit = (ad: AdItem) => {
     setEditItem(ad)
-    setForm({
-      ...ad,
-      type: ad.type === 'image' ? 'poster' : ad.type,
-      startDate: ad.startDate?.split('T')[0] || '',
-      endDate: ad.endDate?.split('T')[0] || '',
-    })
-    setDialogOpen(true)
+    setFormType(ad.type === 'image' ? 'poster' : (ad.type as 'poster' | 'video'))
+    setFormMode('edit')
+  }
+
+  const handleFormSave = async (formData: Record<string, unknown>) => {
+    try {
+      if (editItem) {
+        const res = await authFetchJSON(`/api/admin/ads/${editItem.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(formData),
+        })
+        if (!res.ok) throw new Error()
+        toast.success('Ad updated')
+      } else {
+        const res = await authFetchJSON('/api/admin/ads', {
+          method: 'POST',
+          body: JSON.stringify(formData),
+        })
+        if (!res.ok) throw new Error()
+        toast.success('Ad created')
+      }
+      setFormMode('list')
+      setEditItem(null)
+      fetchAds()
+    } catch {
+      toast.error('Failed to save ad')
+    }
+  }
+
+  const handleFormCancel = () => {
+    setFormMode('list')
+    setEditItem(null)
   }
 
   const placementLabels: Record<string, string> = {
@@ -165,6 +147,19 @@ export default function AdsPage() {
     feed_inline: 'Feed (Every Nth)',
     article_banner: 'Article Banner',
     interstitial: 'Interstitial',
+  }
+
+  // Show full-page form for create/edit
+  if (formMode === 'create' || formMode === 'edit') {
+    return (
+      <AdFormPage
+        key={editItem?.id || formType}
+        editItem={editItem}
+        adType={formType}
+        onSave={handleFormSave}
+        onCancel={handleFormCancel}
+      />
+    )
   }
 
   const AdTable = ({ data, type }: { data: AdItem[]; type: 'poster' | 'video' }) => (
@@ -213,10 +208,10 @@ export default function AdsPage() {
                         <span className="text-sm text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm">{ad.impressionsServed?.toLocaleString()} / {ad.impressionsLimit?.toLocaleString() || '∞'}</TableCell>
+                    <TableCell className="text-sm">{ad.impressionsServed?.toLocaleString()} / {ad.impressionsLimit?.toLocaleString() || '\u221E'}</TableCell>
                     <TableCell className="text-sm">{ad.clicksServed?.toLocaleString()}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {ad.startDate ? new Date(ad.startDate).toLocaleDateString() : '-'} → {ad.endDate ? new Date(ad.endDate).toLocaleDateString() : '-'}
+                      {ad.startDate ? new Date(ad.startDate).toLocaleDateString() : '-'} &rarr; {ad.endDate ? new Date(ad.endDate).toLocaleDateString() : '-'}
                     </TableCell>
                     <TableCell>
                       <Switch
@@ -318,24 +313,195 @@ export default function AdsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+    </div>
+  )
+}
 
-      {/* Ad Form Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {form.type === 'poster' ? <ImageIcon className="h-5 w-5" /> : <Film className="h-5 w-5" />}
-              {editItem ? `Edit ${form.type === 'poster' ? 'Poster' : 'Video'} Ad` : `Create ${form.type === 'poster' ? 'Poster' : 'Video'} Ad`}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Title</Label><Input value={form.title as string} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Ad campaign name" /></div>
-              <div className="space-y-2"><Label>Advertiser</Label><Input value={form.advertiser as string} onChange={e => setForm(p => ({ ...p, advertiser: e.target.value }))} placeholder="Company name" /></div>
-            </div>
+// ============================================================
+// Full-Page Ad Form Component
+// ============================================================
+function AdFormPage({
+  editItem, adType, onSave, onCancel,
+}: {
+  editItem: AdItem | null
+  adType: 'poster' | 'video'
+  onSave: (data: Record<string, unknown>) => void
+  onCancel: () => void
+}) {
+  const [form, setForm] = useState<Record<string, unknown>>({
+    ...defaultForm,
+    type: adType,
+    layout: adType === 'poster' ? 'grid' : '',
+    frequency: 5,
+    ...(editItem ? {
+      ...editItem,
+      type: editItem.type === 'image' ? 'poster' : editItem.type,
+      startDate: editItem.startDate?.split('T')[0] || '',
+      endDate: editItem.endDate?.split('T')[0] || '',
+    } : {}),
+  })
+  const [uploading, setUploading] = useState(false)
+  const [saving, setSaving] = useState(false)
 
-            {/* Placement & Frequency */}
-            <div className="grid grid-cols-2 gap-4">
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await authFetch('/api/admin/media/upload', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (data.url) {
+        const current = (form.imagesUrls as string[]) || []
+        setForm(p => ({ ...p, imagesUrls: [...current, data.url] }))
+        toast.success('Image uploaded')
+      }
+    } catch {
+      toast.error('Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const removeImage = (index: number) => {
+    const current = (form.imagesUrls as string[]) || []
+    setForm(p => ({ ...p, imagesUrls: current.filter((_, i) => i !== index) }))
+  }
+
+  const handleSubmit = async () => {
+    if (!form.title) {
+      toast.error('Title is required')
+      return
+    }
+    if (!form.advertiser) {
+      toast.error('Advertiser is required')
+      return
+    }
+    setSaving(true)
+    try {
+      await onSave(form)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const isPoster = (form.type as string) === 'poster'
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="icon" onClick={onCancel} className="shrink-0">
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold">
+            {editItem ? `Edit ${isPoster ? 'Poster' : 'Video'} Ad` : `Create ${isPoster ? 'Poster' : 'Video'} Ad`}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {editItem ? 'Update the ad campaign details' : 'Configure a new ad campaign with placement and frequency settings'}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Basic Info */}
+          <Card className="border-0 shadow-sm">
+            <CardContent className="pt-6 space-y-5">
+              <h3 className="font-semibold text-sm">Campaign Details</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Title *</Label>
+                  <Input value={form.title as string} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Ad campaign name" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Advertiser *</Label>
+                  <Input value={form.advertiser as string} onChange={e => setForm(p => ({ ...p, advertiser: e.target.value }))} placeholder="Company name" />
+                </div>
+              </div>
+
+              {/* Poster: Image Upload */}
+              {isPoster && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold">Ad Images (up to 4)</Label>
+                  <div className="flex items-center gap-2">
+                    <label className="cursor-pointer">
+                      <Button type="button" variant="outline" size="sm" disabled={uploading || (form.imagesUrls as string[]).length >= 4} asChild>
+                        <span>
+                          {uploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
+                          Upload Image
+                        </span>
+                      </Button>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                    </label>
+                    <span className="text-xs text-muted-foreground">{(form.imagesUrls as string[]).length}/4 images</span>
+                  </div>
+                  {(form.imagesUrls as string[]).length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {(form.imagesUrls as string[]).map((url, i) => (
+                        <div key={i} className="relative group">
+                          <img src={url} alt={`Ad ${i + 1}`} className="h-20 w-full object-cover rounded-lg border" />
+                          <button
+                            onClick={() => removeImage(i)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Layout selector */}
+                  {(form.imagesUrls as string[]).length > 1 && (
+                    <div className="flex items-center gap-3">
+                      <Label className="text-xs">Layout:</Label>
+                      <div className="flex gap-2">
+                        <button
+                          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border ${form.layout === 'grid' ? 'bg-red-50 border-red-300 text-red-700' : 'hover:bg-muted'}`}
+                          onClick={() => setForm(p => ({ ...p, layout: 'grid' }))}
+                        >
+                          <LayoutGrid className="h-3 w-3" /> Grid
+                        </button>
+                        <button
+                          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border ${form.layout === 'carousel' ? 'bg-red-50 border-red-300 text-red-700' : 'hover:bg-muted'}`}
+                          onClick={() => setForm(p => ({ ...p, layout: 'carousel' }))}
+                        >
+                          <Megaphone className="h-3 w-3" /> Carousel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Video: URL */}
+              {!isPoster && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Video URL</Label>
+                  <Input value={form.videoUrl as string} onChange={e => setForm(p => ({ ...p, videoUrl: e.target.value }))} placeholder="https://example.com/ad-video.mp4" />
+                  <p className="text-xs text-muted-foreground">MP4 or WebM format. Video will play as pre-roll before content.</p>
+                </div>
+              )}
+
+              {/* Click URL */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Click URL (Landing Page)</Label>
+                <Input value={form.clickUrl as string} onChange={e => setForm(p => ({ ...p, clickUrl: e.target.value }))} placeholder="https://example.com/landing" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Placement & Frequency */}
+          <Card className="border-0 shadow-sm">
+            <CardContent className="pt-6 space-y-4">
+              <h3 className="font-semibold text-sm">Placement & Frequency</h3>
+
               <div className="space-y-2">
                 <Label>Placement</Label>
                 <select className="w-full border rounded-md p-2 text-sm bg-background" value={form.placement as string} onChange={e => setForm(p => ({ ...p, placement: e.target.value }))}>
@@ -345,6 +511,7 @@ export default function AdsPage() {
                   <option value="interstitial">Interstitial (Full Screen)</option>
                 </select>
               </div>
+
               {form.placement === 'feed_inline' && (
                 <div className="space-y-2">
                   <Label>Display Frequency</Label>
@@ -356,103 +523,43 @@ export default function AdsPage() {
                   <p className="text-[10px] text-muted-foreground">Ad will appear after every N news items in the feed</p>
                 </div>
               )}
-            </div>
 
-            {/* Poster: Image Upload */}
-            {form.type === 'poster' && (
-              <div className="space-y-3">
-                <Label>Ad Images (up to 4)</Label>
-                {/* Upload area */}
-                <div className="flex items-center gap-2">
-                  <label className="cursor-pointer">
-                    <Button type="button" variant="outline" size="sm" disabled={uploading || (form.imagesUrls as string[]).length >= 4} asChild>
-                      <span>
-                        {uploading ? <div className="animate-spin h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full" /> : <Upload className="h-4 w-4 mr-1" />}
-                        Upload Image
-                      </span>
-                    </Button>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                  </label>
-                  <span className="text-xs text-muted-foreground">{(form.imagesUrls as string[]).length}/4 images</span>
-                </div>
-                {/* Image previews */}
-                {(form.imagesUrls as string[]).length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {(form.imagesUrls as string[]).map((url, i) => (
-                      <div key={i} className="relative group">
-                        <img src={url} alt={`Ad ${i + 1}`} className="h-16 w-24 object-cover rounded-lg border" />
-                        <button
-                          onClick={() => removeImage(i)}
-                          className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-2.5 w-2.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {/* Layout selector */}
-                {(form.imagesUrls as string[]).length > 1 && (
-                  <div className="flex items-center gap-3">
-                    <Label className="text-xs">Layout:</Label>
-                    <div className="flex gap-2">
-                      <button
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border ${form.layout === 'grid' ? 'bg-red-50 border-red-300 text-red-700' : 'hover:bg-muted'}`}
-                        onClick={() => setForm(p => ({ ...p, layout: 'grid' }))}
-                      >
-                        <LayoutGrid className="h-3 w-3" /> Grid
-                      </button>
-                      <button
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border ${form.layout === 'carousel' ? 'bg-red-50 border-red-300 text-red-700' : 'hover:bg-muted'}`}
-                        onClick={() => setForm(p => ({ ...p, layout: 'carousel' }))}
-                      >
-                        <Megaphone className="h-3 w-3" /> Carousel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Video: URL */}
-            {form.type === 'video' && (
+              {/* Schedule */}
               <div className="space-y-2">
-                <Label>Video URL</Label>
-                <Input value={form.videoUrl as string} onChange={e => setForm(p => ({ ...p, videoUrl: e.target.value }))} placeholder="https://example.com/ad-video.mp4" />
-                <p className="text-[10px] text-muted-foreground">MP4 or WebM format. Video will play as pre-roll before content.</p>
+                <Label>Start Date</Label>
+                <Input type="date" value={form.startDate as string} onChange={e => setForm(p => ({ ...p, startDate: e.target.value }))} />
               </div>
-            )}
+              <div className="space-y-2">
+                <Label>End Date</Label>
+                <Input type="date" value={form.endDate as string} onChange={e => setForm(p => ({ ...p, endDate: e.target.value }))} />
+              </div>
 
-            {/* Click URL */}
-            <div className="space-y-2">
-              <Label>Click URL (Landing Page)</Label>
-              <Input value={form.clickUrl as string} onChange={e => setForm(p => ({ ...p, clickUrl: e.target.value }))} placeholder="https://example.com/landing" />
-            </div>
+              {/* Impressions Limit */}
+              <div className="space-y-2">
+                <Label>Impressions Limit (0 = unlimited)</Label>
+                <Input type="number" value={form.impressionsLimit as number} onChange={e => setForm(p => ({ ...p, impressionsLimit: parseInt(e.target.value) || 0 }))} />
+              </div>
 
-            {/* Schedule */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Start Date</Label><Input type="date" value={form.startDate as string} onChange={e => setForm(p => ({ ...p, startDate: e.target.value }))} /></div>
-              <div className="space-y-2"><Label>End Date</Label><Input type="date" value={form.endDate as string} onChange={e => setForm(p => ({ ...p, endDate: e.target.value }))} /></div>
-            </div>
+              {/* Active toggle */}
+              <div className="flex items-center gap-2 pt-2">
+                <Switch checked={form.isActive as boolean} onCheckedChange={v => setForm(p => ({ ...p, isActive: v }))} />
+                <Label>Active</Label>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Impressions Limit */}
-            <div className="space-y-2">
-              <Label>Impressions Limit (0 = unlimited)</Label>
-              <Input type="number" value={form.impressionsLimit as number} onChange={e => setForm(p => ({ ...p, impressionsLimit: parseInt(e.target.value) || 0 }))} />
-            </div>
-
-            {/* Active toggle */}
-            <div className="flex items-center gap-2">
-              <Switch checked={form.isActive as boolean} onCheckedChange={v => setForm(p => ({ ...p, isActive: v }))} />
-              <Label>Active</Label>
-            </div>
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <Button variant="outline" className="flex-1" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button className="flex-1 bg-red-600 hover:bg-red-700" onClick={handleSubmit} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              {editItem ? 'Update' : 'Create'}
+            </Button>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button className="bg-red-600 hover:bg-red-700" onClick={handleSave}>{editItem ? 'Update' : 'Create'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </div>
     </div>
   )
 }

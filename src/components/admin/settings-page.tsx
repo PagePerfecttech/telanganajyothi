@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { Settings, Shield, Wrench, MessageSquare, Moon, Video, Bell, Bookmark, Share, Save } from 'lucide-react'
-import { authFetch, authFetchJSON } from '@/lib/utils'
+import { authFetch, authFetchJSON, authFetchJson } from '@/lib/utils'
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Record<string, string>>({})
@@ -19,9 +19,9 @@ export default function SettingsPage() {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await authFetch('/api/admin/settings')
-      setSettings(await res.json())
-    } catch (err) { console.error(err) }
+      const data = await authFetchJson<Record<string, string>>('/api/admin/settings')
+      setSettings(data)
+    } catch { toast.error('Failed to load settings') }
     finally { setLoading(false) }
   }, [])
 

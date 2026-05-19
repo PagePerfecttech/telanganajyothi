@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAppStore } from '@/lib/store'
-import { authFetch, authFetchJSON } from '@/lib/utils'
+import { authFetch, authFetchJSON, authFetchJson } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Search, CheckCircle, XCircle, Upload, X, ImageIcon } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, CheckCircle, XCircle, Upload, X, ImageIcon, ArrowLeft, Save, Loader2 } from 'lucide-react'
 
 interface NewsItem {
   id: string
@@ -69,12 +69,14 @@ export default function NewsPage() {
   const [districts, setDistricts] = useState<District[]>([])
   const [reporters, setReporters] = useState<Reporter[]>([])
   const [tags, setTags] = useState<Tag[]>([])
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editItemId, setEditItemId] = useState<string | null>(null)
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [rejectId, setRejectId] = useState('')
   const [rejectReason, setRejectReason] = useState('')
   const [activeTab, setActiveTab] = useState('all')
+
+  // Page-based form state
+  const [formMode, setFormMode] = useState<'list' | 'create' | 'edit'>('list')
+  const [editItemId, setEditItemId] = useState<string | null>(null)
 
   const limit = 15
 
@@ -88,69 +90,42 @@ export default function NewsPage() {
       if (filterPriority && filterPriority !== 'all') params.set('priority', filterPriority)
       if (activeTab === 'pending') params.set('status', 'pending_review')
 
-      const res = await authFetch(`/api/admin/news?${params}`)
-      const data = await res.json()
+      const data = await authFetchJson<{ news: NewsItem[]; total: number }>(`/api/admin/news?${params}`)
       setNews(data.news || [])
       setTotal(data.total || 0)
     } catch (err) {
       console.error('Fetch news error:', err)
+      toast.error('Failed to load news')
     } finally {
       setLoading(false)
     }
   }, [page, search, filterStatus, filterCategory, filterPriority, activeTab])
 
   useEffect(() => {
-    fetchCategories()
-    fetchDistricts()
-    fetchReporters()
-    fetchTags()
+    const loadDeps = async () => {
+      try {
+        const [cats, dists, reps, tagList] = await Promise.all([
+          authFetchJson<Category[]>('/api/admin/categories'),
+          authFetchJson<District[]>('/api/admin/districts'),
+          authFetchJson<Reporter[]>('/api/admin/reporters'),
+          authFetchJson<Tag[]>('/api/admin/tags'),
+        ])
+        setCategories(cats)
+        setDistricts(dists)
+        setReporters(reps)
+        setTags(tagList)
+      } catch (err) {
+        console.error('Failed to load dependencies:', err)
+      }
+    }
+    loadDeps()
   }, [])
 
   useEffect(() => {
-    fetchNews()
-  }, [fetchNews])
-
-  const fetchCategories = async () => {
-    const res = await authFetch('/api/admin/categories')
-    setCategories(await res.json())
-  }
-  const fetchDistricts = async () => {
-    const res = await authFetch('/api/admin/districts')
-    setDistricts(await res.json())
-  }
-  const fetchReporters = async () => {
-    const res = await authFetch('/api/admin/reporters')
-    setReporters(await res.json())
-  }
-  const fetchTags = async () => {
-    const res = await authFetch('/api/admin/tags')
-    setTags(await res.json())
-  }
-
-  const handleSave = async (formData: Record<string, unknown>) => {
-    try {
-      if (editItemId) {
-        const res = await authFetchJSON(`/api/admin/news/${editItemId}`, {
-          method: 'PUT',
-          body: JSON.stringify({ ...formData, updatedBy: currentUser?.id }),
-        })
-        if (!res.ok) throw new Error()
-        toast.success('News updated successfully')
-      } else {
-        const res = await authFetchJSON('/api/admin/news', {
-          method: 'POST',
-          body: JSON.stringify({ ...formData, createdBy: currentUser?.id }),
-        })
-        if (!res.ok) throw new Error()
-        toast.success('News created successfully')
-      }
-      setDialogOpen(false)
-      setEditItemId(null)
+    if (formMode === 'list') {
       fetchNews()
-    } catch {
-      toast.error('Failed to save news')
     }
-  }
+  }, [fetchNews, formMode])
 
   const handleStatusChange = async (id: string, status: string) => {
     try {
@@ -183,7 +158,62 @@ export default function NewsPage() {
     }
   }
 
+  const openCreateForm = () => {
+    setEditItemId(null)
+    setFormMode('create')
+  }
+
+  const openEditForm = (id: string) => {
+    setEditItemId(id)
+    setFormMode('edit')
+  }
+
+  const handleFormSave = async (formData: Record<string, unknown>) => {
+    try {
+      if (editItemId) {
+        const res = await authFetchJSON(`/api/admin/news/${editItemId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ ...formData, updatedBy: currentUser?.id }),
+        })
+        if (!res.ok) throw new Error()
+        toast.success('News updated successfully')
+      } else {
+        const res = await authFetchJSON('/api/admin/news', {
+          method: 'POST',
+          body: JSON.stringify({ ...formData, createdBy: currentUser?.id }),
+        })
+        if (!res.ok) throw new Error()
+        toast.success('News created successfully')
+      }
+      setFormMode('list')
+      setEditItemId(null)
+    } catch {
+      toast.error('Failed to save news')
+    }
+  }
+
+  const handleFormCancel = () => {
+    setFormMode('list')
+    setEditItemId(null)
+  }
+
   const totalPages = Math.ceil(total / limit)
+
+  // Show full-page form for create/edit
+  if (formMode === 'create' || formMode === 'edit') {
+    return (
+      <NewsFormPage
+        key={editItemId || 'create'}
+        editItemId={editItemId}
+        onSave={handleFormSave}
+        onCancel={handleFormCancel}
+        categories={categories}
+        districts={districts}
+        reporters={reporters}
+        tags={tags}
+      />
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -192,7 +222,7 @@ export default function NewsPage() {
           <h1 className="text-2xl font-bold">News Management</h1>
           <p className="text-sm text-muted-foreground">{total} total articles</p>
         </div>
-        <Button className="bg-red-600 hover:bg-red-700" onClick={() => { setEditItemId(null); setDialogOpen(true) }}>
+        <Button className="bg-red-600 hover:bg-red-700" onClick={openCreateForm}>
           <Plus className="h-4 w-4 mr-2" /> Create News
         </Button>
       </div>
@@ -308,7 +338,7 @@ export default function NewsPage() {
                               </Button>
                             </>
                           )}
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditItemId(item.id); setDialogOpen(true) }}>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditForm(item.id)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={() => handleDelete(item.id)}>
@@ -339,20 +369,6 @@ export default function NewsPage() {
         </div>
       )}
 
-      {/* Create/Edit Dialog */}
-      <NewsFormDialog
-        key={editItemId || 'create'}
-        editItemId={editItemId}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onSave={handleSave}
-        categories={categories}
-        districts={districts}
-        reporters={reporters}
-        tags={tags}
-        currentUser={currentUser}
-      />
-
       {/* Reject Dialog */}
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <DialogContent>
@@ -371,18 +387,19 @@ export default function NewsPage() {
   )
 }
 
-function NewsFormDialog({
-  editItemId, open, onOpenChange, onSave, categories, districts, reporters, tags, currentUser,
+// ============================================================
+// Full-Page News Form Component
+// ============================================================
+function NewsFormPage({
+  editItemId, onSave, onCancel, categories, districts, reporters, tags,
 }: {
   editItemId: string | null
-  open: boolean
-  onOpenChange: (open: boolean) => void
   onSave: (data: Record<string, unknown>) => void
+  onCancel: () => void
   categories: Category[]
   districts: District[]
   reporters: Reporter[]
   tags: Tag[]
-  currentUser: { id: string; name: string; role: string } | null
 }) {
   const [form, setForm] = useState<Record<string, unknown>>({
     title: '', shortDesc: '', content: '', categoryId: '', districtId: '',
@@ -392,12 +409,13 @@ function NewsFormDialog({
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false)
   const [uploadingImages, setUploadingImages] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [pageLoading, setPageLoading] = useState(!!editItemId)
 
-  // Load edit data when dialog opens
+  // Load edit data
   useEffect(() => {
-    if (open && editItemId && !loaded) {
-      authFetch(`/api/admin/news/${editItemId}`)
-        .then(r => r.json())
+    if (editItemId && !loaded) {
+      authFetchJson<Record<string, unknown>>(`/api/admin/news/${editItemId}`)
         .then(data => {
           setForm({
             title: data.title || '',
@@ -413,23 +431,20 @@ function NewsFormDialog({
             priority: data.priority || 'normal',
             status: data.status || 'draft',
             isFeatured: data.isFeatured || false,
-            tagIds: data.tags?.map((t: { tag: { id: string } }) => t.tag.id) || [],
+            tagIds: (data.tags as { tag: { id: string } }[])?.map((t) => t.tag.id) || [],
           })
           setLoaded(true)
+          setPageLoading(false)
         })
-        .catch(() => toast.error('Failed to load news'))
-    } else if (open && !editItemId) {
-      setForm({
-        title: '', shortDesc: '', content: '', categoryId: '', districtId: '',
-        thumbnailUrl: '', imagesUrls: [], videoUrl: '', sourceType: 'original', reporterId: '',
-        priority: 'normal', status: 'draft', isFeatured: false, tagIds: [],
-      })
+        .catch(() => {
+          toast.error('Failed to load news data')
+          setPageLoading(false)
+        })
+    } else if (!editItemId) {
       setLoaded(true)
+      setPageLoading(false)
     }
-    if (!open) {
-      setLoaded(false)
-    }
-  }, [open, editItemId])
+  }, [editItemId, loaded])
 
   const updateField = (key: string, value: unknown) => setForm(prev => ({ ...prev, [key]: value }))
 
@@ -492,232 +507,319 @@ function NewsFormDialog({
     }
   }
 
-  if (!loaded && open) {
+  const handleSubmit = async () => {
+    if (!form.title) {
+      toast.error('Title is required')
+      return
+    }
+    if (!form.categoryId) {
+      toast.error('Category is required')
+      return
+    }
+    setSaving(true)
+    try {
+      await onSave(form)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (pageLoading) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="sr-only">Loading News</DialogTitle>
-          </DialogHeader>
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin h-6 w-6 border-2 border-red-600 border-t-transparent rounded-full" />
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-10 w-10" />
+          <Skeleton className="h-8 w-48" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12" />)}
           </div>
-        </DialogContent>
-      </Dialog>
+          <div className="space-y-4">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12" />)}
+          </div>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{editItemId ? 'Edit News' : 'Create News'}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          {/* Title */}
-          <div className="space-y-2">
-            <Label>Title</Label>
-            <Input value={form.title as string} onChange={(e) => updateField('title', e.target.value)} placeholder="Enter news title" />
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="icon" onClick={onCancel} className="shrink-0">
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold">{editItemId ? 'Edit News' : 'Create News'}</h1>
+          <p className="text-sm text-muted-foreground">
+            {editItemId ? 'Update the news article details below' : 'Fill in the details to create a new news article'}
+          </p>
+        </div>
+      </div>
 
-          {/* Short Description */}
-          <div className="space-y-2">
-            <Label>Short Description</Label>
-            <Textarea value={form.shortDesc as string} onChange={(e) => updateField('shortDesc', e.target.value)} rows={2} placeholder="Brief summary (max 500 chars)" maxLength={500} />
-          </div>
-
-          {/* Content */}
-          <div className="space-y-2">
-            <Label>Full Content</Label>
-            <Textarea value={form.content as string} onChange={(e) => updateField('content', e.target.value)} rows={5} placeholder="Detailed news content (optional)" />
-          </div>
-
-          {/* Category & District */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Select value={form.categoryId as string} onValueChange={(v) => updateField('categoryId', v)}>
-                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                <SelectContent>
-                  {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>District</Label>
-              <Select value={(form.districtId as string) || 'none'} onValueChange={(v) => updateField('districtId', v === 'none' ? '' : v)}>
-                <SelectTrigger><SelectValue placeholder="Select district" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Statewide</SelectItem>
-                  {districts.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Priority & Status */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Priority</Label>
-              <Select value={form.priority as string} onValueChange={(v) => updateField('priority', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="breaking">Breaking</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={form.status as string} onValueChange={(v) => updateField('status', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="pending_review">Submit for Review</SelectItem>
-                  <SelectItem value="published">Publish</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Thumbnail Upload */}
-          <div className="space-y-2">
-            <Label>Thumbnail Image</Label>
-            <div className="flex items-center gap-3">
-              <div className="flex-1">
-                <Input value={form.thumbnailUrl as string} onChange={(e) => updateField('thumbnailUrl', e.target.value)} placeholder="Image URL or upload below" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="border-0 shadow-sm">
+            <CardContent className="pt-6 space-y-5">
+              {/* Title */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Title *</Label>
+                <Input
+                  value={form.title as string}
+                  onChange={(e) => updateField('title', e.target.value)}
+                  placeholder="Enter news title"
+                  className="text-base"
+                />
               </div>
-              <label className="cursor-pointer">
-                <Button type="button" variant="outline" size="sm" disabled={uploadingThumbnail} asChild>
-                  <span>
-                    {uploadingThumbnail ? (
-                      <div className="animate-spin h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full" />
-                    ) : (
-                      <Upload className="h-4 w-4 mr-1" />
-                    )}
-                    Upload
-                  </span>
-                </Button>
-                <input type="file" accept="image/*" className="hidden" onChange={handleThumbnailUpload} />
-              </label>
-            </div>
-            {form.thumbnailUrl && (
-              <div className="relative inline-block mt-2">
-                <img src={form.thumbnailUrl as string} alt="Preview" className="h-20 w-32 object-cover rounded-lg border" />
-                <button onClick={() => updateField('thumbnailUrl', '')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600">
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            )}
-          </div>
 
-          {/* Additional Images Upload */}
-          <div className="space-y-2">
-            <Label>Additional Images (up to 8)</Label>
-            <div className="flex items-center gap-2">
-              <label className="cursor-pointer">
-                <Button type="button" variant="outline" size="sm" disabled={uploadingImages || (form.imagesUrls as string[]).length >= 8} asChild>
-                  <span>
-                    {uploadingImages ? (
-                      <div className="animate-spin h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full" />
-                    ) : (
-                      <ImageIcon className="h-4 w-4 mr-1" />
-                    )}
-                    Upload Images
-                  </span>
-                </Button>
-                <input type="file" accept="image/*" multiple className="hidden" onChange={handleImagesUpload} />
-              </label>
-              <span className="text-xs text-muted-foreground">{(form.imagesUrls as string[]).length}/8 images</span>
-            </div>
-            {(form.imagesUrls as string[]).length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {(form.imagesUrls as string[]).map((url, i) => (
-                  <div key={i} className="relative group">
-                    <img src={url} alt={`Image ${i + 1}`} className="h-16 w-24 object-cover rounded-lg border" />
+              {/* Short Description */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Short Description</Label>
+                <Textarea
+                  value={form.shortDesc as string}
+                  onChange={(e) => updateField('shortDesc', e.target.value)}
+                  rows={2}
+                  placeholder="Brief summary (max 500 chars)"
+                  maxLength={500}
+                />
+                <p className="text-xs text-muted-foreground">{(form.shortDesc as string)?.length || 0}/500 characters</p>
+              </div>
+
+              {/* Content */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Full Content</Label>
+                <Textarea
+                  value={form.content as string}
+                  onChange={(e) => updateField('content', e.target.value)}
+                  rows={8}
+                  placeholder="Detailed news content (optional)"
+                  className="min-h-[200px]"
+                />
+              </div>
+
+              {/* Thumbnail Upload */}
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold">Thumbnail Image</Label>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <Input
+                      value={form.thumbnailUrl as string}
+                      onChange={(e) => updateField('thumbnailUrl', e.target.value)}
+                      placeholder="Image URL or upload below"
+                    />
+                  </div>
+                  <label className="cursor-pointer">
+                    <Button type="button" variant="outline" size="sm" disabled={uploadingThumbnail} asChild>
+                      <span>
+                        {uploadingThumbnail ? (
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4 mr-1" />
+                        )}
+                        Upload
+                      </span>
+                    </Button>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleThumbnailUpload} />
+                  </label>
+                </div>
+                {form.thumbnailUrl && (
+                  <div className="relative inline-block">
+                    <img src={form.thumbnailUrl as string} alt="Preview" className="h-24 w-40 object-cover rounded-lg border" />
                     <button
-                      onClick={() => removeImage(i)}
-                      className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => updateField('thumbnailUrl', '')}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
                     >
-                      <X className="h-2.5 w-2.5" />
+                      <X className="h-3 w-3" />
                     </button>
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Video URL */}
-          <div className="space-y-2">
-            <Label>Video URL (optional)</Label>
-            <Input value={form.videoUrl as string} onChange={(e) => updateField('videoUrl', e.target.value)} placeholder="https://..." />
-          </div>
+              {/* Additional Images Upload */}
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold">Additional Images (up to 8)</Label>
+                <div className="flex items-center gap-2">
+                  <label className="cursor-pointer">
+                    <Button type="button" variant="outline" size="sm" disabled={uploadingImages || (form.imagesUrls as string[]).length >= 8} asChild>
+                      <span>
+                        {uploadingImages ? (
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <ImageIcon className="h-4 w-4 mr-1" />
+                        )}
+                        Upload Images
+                      </span>
+                    </Button>
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={handleImagesUpload} />
+                  </label>
+                  <span className="text-xs text-muted-foreground">{(form.imagesUrls as string[]).length}/8 images</span>
+                </div>
+                {(form.imagesUrls as string[]).length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {(form.imagesUrls as string[]).map((url, i) => (
+                      <div key={i} className="relative group">
+                        <img src={url} alt={`Image ${i + 1}`} className="h-20 w-full object-cover rounded-lg border" />
+                        <button
+                          onClick={() => removeImage(i)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Video URL */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Video URL (optional)</Label>
+                <Input
+                  value={form.videoUrl as string}
+                  onChange={(e) => updateField('videoUrl', e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Publish Settings */}
+          <Card className="border-0 shadow-sm">
+            <CardContent className="pt-6 space-y-4">
+              <h3 className="font-semibold text-sm">Publish Settings</h3>
+
+              {/* Category */}
+              <div className="space-y-2">
+                <Label>Category *</Label>
+                <Select value={form.categoryId as string} onValueChange={(v) => updateField('categoryId', v)}>
+                  <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                  <SelectContent>
+                    {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* District */}
+              <div className="space-y-2">
+                <Label>District</Label>
+                <Select value={(form.districtId as string) || 'none'} onValueChange={(v) => updateField('districtId', v === 'none' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="Select district" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Statewide</SelectItem>
+                    {districts.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Priority */}
+              <div className="space-y-2">
+                <Label>Priority</Label>
+                <Select value={form.priority as string} onValueChange={(v) => updateField('priority', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="breaking">Breaking</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Status */}
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={form.status as string} onValueChange={(v) => updateField('status', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="pending_review">Submit for Review</SelectItem>
+                    <SelectItem value="published">Publish</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Featured toggle */}
+              <div className="flex items-center gap-3 pt-2">
+                <Switch checked={form.isFeatured as boolean} onCheckedChange={(v) => updateField('isFeatured', v)} />
+                <Label>Featured / Breaking</Label>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Source & Reporter */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Source Type</Label>
-              <Select value={form.sourceType as string} onValueChange={(v) => updateField('sourceType', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="original">Original</SelectItem>
-                  <SelectItem value="reporter">Reporter</SelectItem>
-                  <SelectItem value="rss">RSS</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Reporter</Label>
-              <Select value={(form.reporterId as string) || 'none'} onValueChange={(v) => updateField('reporterId', v === 'none' ? '' : v)}>
-                <SelectTrigger><SelectValue placeholder="Select reporter" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {reporters.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <Card className="border-0 shadow-sm">
+            <CardContent className="pt-6 space-y-4">
+              <h3 className="font-semibold text-sm">Source & Reporter</h3>
+
+              <div className="space-y-2">
+                <Label>Source Type</Label>
+                <Select value={form.sourceType as string} onValueChange={(v) => updateField('sourceType', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="original">Original</SelectItem>
+                    <SelectItem value="reporter">Reporter</SelectItem>
+                    <SelectItem value="rss">RSS</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Reporter</Label>
+                <Select value={(form.reporterId as string) || 'none'} onValueChange={(v) => updateField('reporterId', v === 'none' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="Select reporter" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {reporters.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Tags */}
           {tags.length > 0 && (
-            <div className="space-y-2">
-              <Label>Tags</Label>
-              <div className="flex flex-wrap gap-2">
-                {tags.map(tag => {
-                  const selected = ((form.tagIds as string[]) || []).includes(tag.id)
-                  return (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() => toggleTag(tag.id)}
-                      className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                        selected
-                          ? 'bg-red-50 border-red-300 text-red-700'
-                          : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      {tag.name}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="pt-6 space-y-3">
+                <h3 className="font-semibold text-sm">Tags</h3>
+                <div className="flex flex-wrap gap-2">
+                  {tags.map(tag => {
+                    const selected = ((form.tagIds as string[]) || []).includes(tag.id)
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => toggleTag(tag.id)}
+                        className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                          selected
+                            ? 'bg-red-50 border-red-300 text-red-700'
+                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        {tag.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
           )}
 
-          {/* Featured toggle */}
-          <div className="flex items-center gap-3">
-            <Switch checked={form.isFeatured as boolean} onCheckedChange={(v) => updateField('isFeatured', v)} />
-            <Label>Featured / Breaking</Label>
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <Button variant="outline" className="flex-1" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button className="flex-1 bg-red-600 hover:bg-red-700" onClick={handleSubmit} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              {editItemId ? 'Update' : 'Create'}
+            </Button>
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button className="bg-red-600 hover:bg-red-700" onClick={() => onSave(form)}>
-            {editItemId ? 'Update' : 'Create'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   )
 }

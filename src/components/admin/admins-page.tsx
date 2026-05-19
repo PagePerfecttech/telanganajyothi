@@ -62,7 +62,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { authFetch, authFetchJSON } from '@/lib/utils'
+import { authFetch, authFetchJSON, authFetchJson } from '@/lib/utils'
 
 interface AdminItem {
   id: string
@@ -132,9 +132,7 @@ export default function AdminsPage() {
   const fetchAdmins = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await authFetch('/api/admin/admins')
-      if (!res.ok) throw new Error('Failed to fetch admins')
-      const data = await res.json()
+      const data = await authFetchJson<AdminItem[] | { admins: AdminItem[] }>('/api/admin/admins')
       setAdmins(Array.isArray(data) ? data : data.admins ?? [])
     } catch {
       toast.error('Failed to load administrators')

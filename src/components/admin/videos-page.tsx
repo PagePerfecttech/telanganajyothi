@@ -61,7 +61,7 @@ import {
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { authFetch, authFetchJSON } from '@/lib/utils'
+import { authFetch, authFetchJSON, authFetchJson } from '@/lib/utils'
 
 interface VideoItem {
   id: string
@@ -173,9 +173,7 @@ export default function VideosPage() {
   const fetchVideos = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await authFetch('/api/admin/videos')
-      if (!res.ok) throw new Error('Failed to fetch videos')
-      const data = await res.json()
+      const data = await authFetchJson<VideoItem[]>('/api/admin/videos')
       setVideos(Array.isArray(data) ? data : [])
     } catch {
       toast.error('Failed to load videos')
@@ -186,9 +184,7 @@ export default function VideosPage() {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await authFetch('/api/admin/categories')
-      if (!res.ok) throw new Error('Failed to fetch categories')
-      const data = await res.json()
+      const data = await authFetchJson<Category[]>('/api/admin/categories')
       setCategories(Array.isArray(data) ? data : [])
     } catch {
       toast.error('Failed to load categories')

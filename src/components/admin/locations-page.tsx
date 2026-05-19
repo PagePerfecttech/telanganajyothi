@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, MapPin } from 'lucide-react'
-import { authFetch, authFetchJSON } from '@/lib/utils'
+import { authFetch, authFetchJSON, authFetchJson } from '@/lib/utils'
 
 interface StateItem { id: string; name: string; code: string; isActive: boolean; _count?: { districts: number; news: number } }
 interface DistrictItem { id: string; name: string; stateId: string; isActive: boolean; state?: { name: string }; _count?: { news: number } }
@@ -32,17 +32,17 @@ export default function LocationsPage() {
 
   const fetchStates = useCallback(async () => {
     try {
-      const res = await authFetch('/api/admin/states')
-      setStates(await res.json())
-    } catch (err) { console.error(err) }
+      const data = await authFetchJson<StateItem[]>('/api/admin/states')
+      setStates(data)
+    } catch { toast.error('Failed to load states') }
   }, [])
 
   const fetchDistricts = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await authFetch('/api/admin/districts')
-      setDistricts(await res.json())
-    } catch (err) { console.error(err) }
+      const data = await authFetchJson<DistrictItem[]>('/api/admin/districts')
+      setDistricts(data)
+    } catch { toast.error('Failed to load districts') }
     finally { setLoading(false) }
   }, [])
 

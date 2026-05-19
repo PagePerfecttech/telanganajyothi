@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, FolderOpen } from 'lucide-react'
-import { authFetch, authFetchJSON } from '@/lib/utils'
+import { authFetch, authFetchJSON, authFetchJson } from '@/lib/utils'
 
 interface CategoryItem {
   id: string
@@ -37,9 +37,9 @@ export default function CategoriesPage() {
   const fetchCategories = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await authFetch('/api/admin/categories')
-      setCategories(await res.json())
-    } catch (err) { console.error(err) }
+      const data = await authFetchJson<CategoryItem[]>('/api/admin/categories')
+      setCategories(data)
+    } catch (err) { console.error(err); toast.error('Failed to load categories') }
     finally { setLoading(false) }
   }, [])
 

@@ -29,7 +29,7 @@ import {
   ShieldCheck,
   ShieldX,
 } from 'lucide-react'
-import { authFetch, authFetchJSON } from '@/lib/utils'
+import { authFetch, authFetchJSON, authFetchJson } from '@/lib/utils'
 
 interface UserItem {
   id: string
@@ -99,12 +99,10 @@ export default function UsersPage() {
       if (search) params.set('search', search)
       if (districtId) params.set('districtId', districtId)
 
-      const res = await authFetch(`/api/admin/users?${params.toString()}`)
-      const data: UsersResponse = await res.json()
+      const data = await authFetchJson<UsersResponse>(`/api/admin/users?${params.toString()}`)
       setUsers(data.users)
       setTotal(data.total)
-    } catch (err) {
-      console.error(err)
+    } catch {
       toast.error('Failed to load users')
     } finally {
       setLoading(false)
@@ -116,10 +114,9 @@ export default function UsersPage() {
   }, [fetchUsers])
 
   useEffect(() => {
-    authFetch('/api/admin/districts')
-      .then((r) => r.json())
+    authFetchJson<District[]>('/api/admin/districts')
       .then(setDistricts)
-      .catch(console.error)
+      .catch(() => toast.error('Failed to load districts'))
   }, [])
 
   // Reset to page 1 when filters change

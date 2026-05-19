@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, UserCheck, UserX } from 'lucide-react'
-import { authFetch, authFetchJSON } from '@/lib/utils'
+import { authFetch, authFetchJSON, authFetchJson } from '@/lib/utils'
 
 interface ReporterItem {
   id: string
@@ -54,15 +54,15 @@ export default function ReportersPage() {
   const fetchReporters = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await authFetch('/api/admin/reporters')
-      setReporters(await res.json())
-    } catch (err) { console.error(err) }
+      const data = await authFetchJson<ReporterItem[]>('/api/admin/reporters')
+      setReporters(data)
+    } catch { toast.error('Failed to load reporters') }
     finally { setLoading(false) }
   }, [])
 
   useEffect(() => {
     fetchReporters()
-    authFetch('/api/admin/districts').then(r => r.json()).then(setDistricts).catch(console.error)
+    authFetchJson<District[]>('/api/admin/districts').then(setDistricts).catch(() => toast.error('Failed to load districts'))
   }, [fetchReporters])
 
   const handleSave = async () => {
