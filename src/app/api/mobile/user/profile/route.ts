@@ -1,21 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { verifyFirebaseToken } from '@/lib/firebase-admin'
+
+export async function GET(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    let decodedToken;
+    try {
+      decodedToken = await verifyFirebaseToken(authHeader);
+    } catch (e: any) {
+      return NextResponse.json({ error: e.message }, { status: 401 })
+    }
+
+    const phone = decodedToken.phone_number;
+    if (!phone) {
+       return NextResponse.json({ error: 'Token missing phone number' }, { status: 401 })
+    }
+
+    const user = await db.user.findUnique({ where: { phone } });
+    const reporter = await db.reporter.findUnique({ where: { phone } });
+
+    return NextResponse.json({
+      user,
+      reporterStatus: reporter ? reporter.status : 'none',
+    })
+  } catch (error) {
+    console.error('Profile fetch error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    
+    let decodedToken;
+    try {
+      decodedToken = await verifyFirebaseToken(authHeader);
+    } catch (e: any) {
+      return NextResponse.json({ error: e.message }, { status: 401 })
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    const decoded = Buffer.from(token, 'base64').toString()
-    const [userId] = decoded.split(':')
+    // Phone number from Firebase Auth
+    const phone = decodedToken.phone_number;
+    if (!phone) {
+       return NextResponse.json({ error: 'Token missing phone number' }, { status: 401 })
+    }
+
+    // Find or create user to get internal userId
+    let dbUser = await db.user.findUnique({ where: { phone } });
+    if (!dbUser) {
+      dbUser = await db.user.create({ data: { phone } });
+    }
 
     const data = await request.json()
 
     const user = await db.user.update({
-      where: { id: userId },
+      where: { id: dbUser.id },
       data: {
         name: data.name,
         email: data.email,
