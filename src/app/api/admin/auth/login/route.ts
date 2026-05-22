@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import { SignJWT } from 'jose'
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,7 +41,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
-    const token = Buffer.from(`${admin.id}:${admin.email}:${Date.now()}`).toString('base64')
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_secret_key_for_dev')
+    const token = await new SignJWT({ adminId: admin.id, email: admin.email, role: admin.role })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('7d')
+      .sign(secret)
 
     return NextResponse.json({
       token,

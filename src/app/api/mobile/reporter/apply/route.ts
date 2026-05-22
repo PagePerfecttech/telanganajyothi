@@ -18,11 +18,11 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
-    const { name, email, bio, stateId, districtId, beat } = data;
+    const { name, email, bio, stateId, districtId, beat, idProofUrl } = data;
 
-    // A reporter needs a state and district
-    if (!stateId || !districtId) {
-      return NextResponse.json({ error: 'State and District are required' }, { status: 400 })
+    // A reporter needs a state, district and ID proof
+    if (!stateId || !districtId || !idProofUrl) {
+      return NextResponse.json({ error: 'State, District, and ID proof are required' }, { status: 400 })
     }
 
     // Check if already applied
@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
         stateId,
         districtId,
         beat,
+        idProofUrl,
         status: 'pending',
       }
     })

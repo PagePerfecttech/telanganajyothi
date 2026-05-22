@@ -21,7 +21,10 @@ export async function GET(request: NextRequest) {
     const reporter = await db.reporter.findUnique({ where: { phone } });
 
     return NextResponse.json({
-      user,
+      user: user ? {
+        ...user,
+        preferredCategories: user.preferredCategories ? JSON.parse(user.preferredCategories) : []
+      } : null,
       reporterStatus: reporter ? reporter.status : 'none',
     })
   } catch (error) {
@@ -63,11 +66,15 @@ export async function POST(request: NextRequest) {
         stateId: data.stateId,
         districtId: data.districtId,
         preferredLanguage: data.preferredLanguage,
+        preferredCategories: data.preferredCategories ? JSON.stringify(data.preferredCategories) : undefined,
         avatar: data.avatar,
       },
     })
 
-    return NextResponse.json(user)
+    return NextResponse.json({
+      ...user,
+      preferredCategories: user.preferredCategories ? JSON.parse(user.preferredCategories) : []
+    })
   } catch (error) {
     console.error('Profile update error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

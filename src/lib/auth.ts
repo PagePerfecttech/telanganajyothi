@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { jwtVerify } from 'jose'
 
 /**
  * Verify admin authentication from request headers
@@ -20,14 +21,13 @@ export async function verifyAuth(request: NextRequest): Promise<{
     const token = authHeader.substring(7)
     if (!token) return null
 
-    // Decode the base64 token: "adminId:email:timestamp"
-    const decoded = Buffer.from(token, 'base64').toString('utf-8')
-    const parts = decoded.split(':')
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_secret_key_for_dev')
+    const { payload } = await jwtVerify(token, secret)
 
-    if (parts.length < 2) return null
+    if (!payload || !payload.adminId || !payload.email) return null
 
-    const adminId = parts[0]
-    const email = parts[1]
+    const adminId = payload.adminId as string
+    const email = payload.email as string
 
     // Verify admin exists and is active
     const admin = await db.admin.findFirst({

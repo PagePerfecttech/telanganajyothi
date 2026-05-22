@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyFirebaseToken } from '@/lib/firebase-admin'
+import { s3Client, R2_BUCKET, R2_PUBLIC_URL } from '@/lib/r2'
+import { PutObjectCommand } from '@aws-sdk/client-s3'
+import path from 'path'
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,10 +27,37 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
-    const { title, shortDesc, categoryId, stateId, districtId, thumbnailUrl } = data;
+    const { title, shortDesc, categoryId, stateId, districtId, thumbnailBase64 } = data;
+    let { thumbnailUrl } = data;
 
-    if (!title || !categoryId || !stateId || !thumbnailUrl) {
+    if (!title || !categoryId || !stateId) {
        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    if (thumbnailBase64) {
+      try {
+        const timestamp = Date.now()
+        const randomStr = Math.random().toString(36).substring(2, 8)
+        const filename = `reporter-${timestamp}-${randomStr}.jpg`
+        const buffer = Buffer.from(thumbnailBase64, 'base64')
+        
+        await s3Client.send(
+          new PutObjectCommand({
+            Bucket: R2_BUCKET,
+            Key: filename,
+            Body: buffer,
+            ContentType: 'image/jpeg',
+          })
+        )
+        thumbnailUrl = `${R2_PUBLIC_URL}/${filename}`
+      } catch (err) {
+        console.error('Base64 upload error:', err)
+        return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 })
+      }
+    }
+
+    if (!thumbnailUrl) {
+       return NextResponse.json({ error: 'Thumbnail is required' }, { status: 400 })
     }
 
     // Find a system admin to assign as creator, or allow reporter creation

@@ -140,6 +140,7 @@ model Reporter {
   beat               String?  // Politics, Crime, Sports, etc.
   status             String   @default("pending") // pending, active, suspended
   canPublishDirectly Boolean  @default(false) @map("can_publish_directly")
+  idProofUrl         String?  @map("id_proof_url")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
   deletedAt          DateTime? @map("deleted_at")
@@ -163,16 +164,21 @@ model User {
   avatar            String?
   stateId           String?  @map("state_id")
   districtId        String?  @map("district_id")
-  preferredLanguage String   @default("te") @map("preferred_language") // te, en
-  fcmToken          String?  @map("fcm_token")
-  isActive          Boolean  @default(true) @map("is_active")
-  isPremium         Boolean  @default(false) @map("is_premium")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-  deletedAt         DateTime? @map("deleted_at")
+  preferredLanguage   String   @default("te") @map("preferred_language") // te, en
+  preferredCategories String   @default("[]") @map("preferred_categories") // JSON array string
+  fcmToken            String?  @map("fcm_token")
+  isActive            Boolean  @default(true) @map("is_active")
+  isPremium           Boolean  @default(false) @map("is_premium")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
 
-  state     State?    @relation(fields: [stateId], references: [id])
-  district  District? @relation(fields: [districtId], references: [id])
+  state          State?          @relation(fields: [stateId], references: [id])
+  district       District?       @relation(fields: [districtId], references: [id])
+  bookmarks      Bookmark[]
+  newsReactions  NewsReaction[]
+  videoReactions VideoReaction[]
+  comments       Comment[]
 
   @@map("users")
 }
@@ -213,6 +219,12 @@ model News {
   reporter    Reporter? @relation(fields: [reporterId], references: [id])
   admin       Admin     @relation(fields: [createdBy], references: [id])
   tags        NewsTag[]
+  bookmarks   Bookmark[]
+  reactions   NewsReaction[]
+  comments    Comment[]
+
+  @@index([status, publishedAt(sort: Desc), districtId])
+  @@index([status, publishedAt(sort: Desc), categoryId])
 
   @@map("news")
 }
@@ -235,7 +247,8 @@ model Video {
   updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
-  category    Category? @relation(fields: [categoryId], references: [id])
+  category    Category?       @relation(fields: [categoryId], references: [id])
+  reactions   VideoReaction[]
 
   @@map("videos")
 }
@@ -346,4 +359,72 @@ model Media {
   deletedAt   DateTime? @map("deleted_at")
 
   @@map("media")
+}
+
+// ============================================================
+// BOOKMARKS & REACTIONS
+// ============================================================
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  newsId    String   @map("news_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  news News @relation(fields: [newsId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, newsId])
+  @@map("bookmarks")
+}
+
+model NewsReaction {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  newsId    String   @map("news_id")
+  type      String   @default("like") // like, heart, etc.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  news News @relation(fields: [newsId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, newsId])
+  @@map("news_reactions")
+}
+
+model VideoReaction {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  videoId   String   @map("video_id")
+  type      String   @default("like")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+  @@map("video_reactions")
+}
+
+// ============================================================
+// COMMENTS
+// ============================================================
+
+model Comment {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  newsId    String   @map("news_id")
+  content   String
+  parentId  String?  @map("parent_id")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  news     News      @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies  Comment[] @relation("CommentReplies")
+
+  @@index([newsId, createdAt(sort: Desc)])
+  @@map("comments")
 }
