@@ -4,7 +4,7 @@ import { useAppStore, type ViewType } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -140,6 +140,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Mobile Sidebar */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <SheetContent side="left" className="p-0 w-64 bg-gray-900 border-gray-800">
+          <div className="sr-only">
+            <SheetTitle>Navigation Menu</SheetTitle>
+            <SheetDescription>Main navigation menu for the admin dashboard</SheetDescription>
+          </div>
           <SidebarNav activeView={activeView} onViewChange={(v) => { setActiveView(v); setSidebarOpen(false) }} collapsed={false} />
         </SheetContent>
       </Sheet>
