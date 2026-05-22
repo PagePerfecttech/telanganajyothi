@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/lib/db';
 
 export async function GET() {
   try {
-    const states = await prisma.state.findMany({
+    const states = await db.state.findMany({
       where: {
         isActive: true,
         deletedAt: null,
