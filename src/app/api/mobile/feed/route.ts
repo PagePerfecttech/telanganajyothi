@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   const { district_id: districtId, category_id: categoryId, page, limit } = parsed.data
 
   try {
-    let dbUser = null;
+    let dbUser: any = null;
     const authHeader = request.headers.get('authorization')
     if (authHeader) {
       try {
