@@ -41,8 +41,10 @@ export default function DashboardPage() {
     try {
       const d = await authFetchJson<DashboardData>('/api/admin/dashboard')
       setData(d)
-    } catch {
-      toast.error('Failed to load dashboard')
+    } catch (error: any) {
+      if (error?.message !== 'Unauthorized') {
+        toast.error('Failed to load dashboard')
+      }
     } finally {
       setLoading(false)
     }
