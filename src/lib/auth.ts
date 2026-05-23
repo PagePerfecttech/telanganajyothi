@@ -15,16 +15,30 @@ export async function verifyAuth(request: NextRequest): Promise<{
   try {
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('auth.ts: missing or invalid authorization header:', authHeader);
       return null
     }
 
     const token = authHeader.substring(7)
-    if (!token) return null
+    if (!token) {
+      console.log('auth.ts: missing token after Bearer');
+      return null
+    }
 
     const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_secret_key_for_dev')
-    const { payload } = await jwtVerify(token, secret)
+    let payload;
+    try {
+      const result = await jwtVerify(token, secret)
+      payload = result.payload;
+    } catch (err) {
+      console.log('auth.ts: jwtVerify failed', err);
+      return null;
+    }
 
-    if (!payload || !payload.adminId || !payload.email) return null
+    if (!payload || !payload.adminId || !payload.email) {
+      console.log('auth.ts: invalid payload', payload);
+      return null
+    }
 
     const adminId = payload.adminId as string
     const email = payload.email as string
@@ -45,8 +59,13 @@ export async function verifyAuth(request: NextRequest): Promise<{
       },
     })
 
+    if (!admin) {
+      console.log('auth.ts: admin not found in DB for', adminId, email);
+    }
+
     return admin
-  } catch {
+  } catch (err) {
+    console.log('auth.ts: unexpected error in verifyAuth', err);
     return null
   }
 }

@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
           category: { select: { name: true, slug: true, color: true } },
           district: { select: { name: true } },
         },
-        orderBy: [{ priority: 'desc' }, { publishedAt: 'desc' }],
+        orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
       }),

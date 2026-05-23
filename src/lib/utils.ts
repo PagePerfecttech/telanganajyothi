@@ -50,7 +50,7 @@ export async function authFetch(url: string, options: RequestInit = {}): Promise
     ...getAuthHeaders(),
     ...(options.headers || {}),
   }
-  const response = await fetch(url, { ...options, headers })
+  const response = await fetch(url, { cache: 'no-store', ...options, headers })
   return handleUnauthorized(response)
 }
 
@@ -64,7 +64,7 @@ export async function authFetchJSON(url: string, options: RequestInit = {}): Pro
     'Content-Type': 'application/json',
     ...(options.headers || {}),
   }
-  const response = await fetch(url, { ...options, headers })
+  const response = await fetch(url, { cache: 'no-store', ...options, headers })
   return handleUnauthorized(response)
 }
 
