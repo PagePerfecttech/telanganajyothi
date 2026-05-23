@@ -36,7 +36,7 @@ export default function LoginPage() {
       }
 
       localStorage.setItem('admin_token', data.token)
-      setCurrentUser(data.admin)
+      setCurrentUser(data.user)
       setAuthenticated(true)
       toast.success('Welcome back!')
     } catch (err: unknown) {
