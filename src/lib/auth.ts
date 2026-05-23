@@ -13,7 +13,7 @@ export async function verifyAuth(request: NextRequest): Promise<{
   role: string
 } | null> {
   try {
-    const authHeader = request.headers.get('authorization')
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return null
     }
