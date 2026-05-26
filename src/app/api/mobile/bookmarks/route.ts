@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
             title: true,
             shortDesc: true,
             thumbnailUrl: true,
+            imagesUrls: true,
             publishedAt: true,
             category: { select: { name: true, color: true } },
           }
@@ -35,7 +36,20 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' }
     });
 
-    return NextResponse.json(bookmarks)
+    const mappedBookmarks = bookmarks.map(b => {
+      const parsedImages = b.news.imagesUrls ? JSON.parse(b.news.imagesUrls) : [];
+      const thumbnail = b.news.thumbnailUrl || (parsedImages.length > 0 ? parsedImages[0] : '');
+      return {
+        ...b,
+        news: {
+          ...b.news,
+          thumbnailUrl: thumbnail,
+          imagesUrls: parsedImages,
+        }
+      };
+    });
+
+    return NextResponse.json(mappedBookmarks)
   } catch (error) {
     console.error('Bookmarks fetch error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

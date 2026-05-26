@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
           title: true,
           shortDesc: true,
           thumbnailUrl: true,
+          imagesUrls: true,
           priority: true,
           publishedAt: true,
           viewsCount: true,
@@ -100,6 +101,10 @@ export async function GET(request: NextRequest) {
     const adFrequency = ads.length > 0 ? (ads[0].frequency || 5) : 5
 
     const feed = news.map((item, index) => {
+      const parsedImages = item.imagesUrls ? JSON.parse(item.imagesUrls) : [];
+      const thumbnail = item.thumbnailUrl || (parsedImages.length > 0 ? parsedImages[0] : '');
+      const itemWithImages = { ...item, thumbnailUrl: thumbnail, imagesUrls: parsedImages };
+
       if ((index + 1) % adFrequency === 0 && ads.length > 0) {
         const ad = ads[index % ads.length]
         return {
@@ -114,7 +119,7 @@ export async function GET(request: NextRequest) {
       }
       return {
         type: 'news',
-        news: item,
+        news: itemWithImages,
       }
     })
 

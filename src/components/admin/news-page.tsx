@@ -306,8 +306,8 @@ export default function NewsPage() {
                   {news.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell>
-                        {item.thumbnailUrl ? (
-                          <img src={item.thumbnailUrl} alt="" className="w-10 h-10 rounded object-cover bg-muted" />
+                        {item.thumbnailUrl || (item.imagesUrls?.length > 0) ? (
+                          <img src={item.thumbnailUrl || item.imagesUrls[0]} alt="" className="w-10 h-10 rounded object-cover bg-muted" />
                         ) : (
                           <div className="w-10 h-10 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">N</div>
                         )}

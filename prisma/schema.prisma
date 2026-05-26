@@ -1,6 +1,3 @@
-// Telangana Jyothi Spot News - Database Schema
-// Prisma + SQLite
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,10 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============================================================
-// STATES & DISTRICTS (Location Management)
-// ============================================================
-
 model State {
   id        String     @id @default(cuid())
   name      String
@@ -22,35 +15,29 @@ model State {
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
   deletedAt DateTime?  @map("deleted_at")
-
   districts District[]
   news      News[]
-  users     User[]
   reporters Reporter[]
+  users     User[]
 
   @@map("states")
 }
 
 model District {
-  id        String    @id @default(cuid())
+  id        String     @id @default(cuid())
   name      String
-  stateId   String    @map("state_id")
-  isActive  Boolean   @default(true) @map("is_active")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  deletedAt DateTime? @map("deleted_at")
-
-  state     State     @relation(fields: [stateId], references: [id])
+  stateId   String     @map("state_id")
+  isActive  Boolean    @default(true) @map("is_active")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  deletedAt DateTime?  @map("deleted_at")
+  state     State      @relation(fields: [stateId], references: [id])
   news      News[]
-  users     User[]
   reporters Reporter[]
+  users     User[]
 
   @@map("districts")
 }
-
-// ============================================================
-// CATEGORIES
-// ============================================================
 
 model Category {
   id        String    @id @default(cuid())
@@ -63,240 +50,199 @@ model Category {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
-
-  news  News[]
-  videos Video[]
+  news      News[]
+  videos    Video[]
 
   @@map("categories")
 }
 
-// ============================================================
-// TAGS
-// ============================================================
-
 model Tag {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   name       String
-  slug       String   @unique
-  type       String   @default("topic") // topic, person, event
-  isTrending Boolean  @default(false) @map("is_trending")
-  isActive   Boolean  @default(true) @map("is_active")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  slug       String    @unique
+  type       String    @default("topic")
+  isTrending Boolean   @default(false) @map("is_trending")
+  isActive   Boolean   @default(true) @map("is_active")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
   deletedAt  DateTime? @map("deleted_at")
-
-  news NewsTag[]
+  news       NewsTag[]
 
   @@map("tags")
 }
 
 model NewsTag {
-  id      String @id @default(cuid())
-  newsId  String @map("news_id")
-  tagId   String @map("tag_id")
-
-  news    News   @relation(fields: [newsId], references: [id], onDelete: Cascade)
-  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  newsId String @map("news_id")
+  tagId  String @map("tag_id")
+  news   News   @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@unique([newsId, tagId])
   @@map("news_tags")
 }
 
-// ============================================================
-// ADMINS (Dashboard Users)
-// ============================================================
-
 model Admin {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String   @map("password_hash")
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String     @map("password_hash")
   name         String
   avatar       String?
-  role         String   @default("editor") // super_admin, admin, editor, moderator
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-  deletedAt    DateTime? @map("deleted_at")
-
-  news        News[]
-  auditLogs   AuditLog[]
+  role         String     @default("editor")
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  deletedAt    DateTime?  @map("deleted_at")
+  auditLogs    AuditLog[]
+  news         News[]
 
   @@map("admins")
 }
 
-// ============================================================
-// REPORTERS
-// ============================================================
-
 model Reporter {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   name               String
-  phone              String   @unique
+  phone              String    @unique
   email              String?
   avatar             String?
   bio                String?
-  stateId            String   @map("state_id")
-  districtId         String   @map("district_id")
-  beat               String?  // Politics, Crime, Sports, etc.
-  status             String   @default("pending") // pending, active, suspended
-  canPublishDirectly Boolean  @default(false) @map("can_publish_directly")
-  idProofUrl         String?  @map("id_proof_url")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  stateId            String    @map("state_id")
+  districtId         String    @map("district_id")
+  beat               String?
+  status             String    @default("pending")
+  canPublishDirectly Boolean   @default(false) @map("can_publish_directly")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
   deletedAt          DateTime? @map("deleted_at")
-
-  state     State     @relation(fields: [stateId], references: [id])
-  district  District  @relation(fields: [districtId], references: [id])
-  news      News[]
+  idProofUrl         String?   @map("id_proof_url")
+  news               News[]
+  district           District  @relation(fields: [districtId], references: [id])
+  state              State     @relation(fields: [stateId], references: [id])
 
   @@map("reporters")
 }
 
-// ============================================================
-// USERS (App Users)
-// ============================================================
-
 model User {
-  id                String   @id @default(cuid())
-  phone             String   @unique
-  name              String?
-  email             String?
-  avatar            String?
-  stateId           String?  @map("state_id")
-  districtId        String?  @map("district_id")
-  preferredLanguage   String   @default("te") @map("preferred_language") // te, en
-  preferredCategories String   @default("[]") @map("preferred_categories") // JSON array string
-  fcmToken            String?  @map("fcm_token")
-  isActive            Boolean  @default(true) @map("is_active")
-  isPremium           Boolean  @default(false) @map("is_premium")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
-  deletedAt           DateTime? @map("deleted_at")
-
-  state          State?          @relation(fields: [stateId], references: [id])
-  district       District?       @relation(fields: [districtId], references: [id])
-  bookmarks      Bookmark[]
-  newsReactions  NewsReaction[]
-  videoReactions VideoReaction[]
-  comments       Comment[]
+  id                  String          @id @default(cuid())
+  phone               String          @unique
+  name                String?
+  email               String?
+  avatar              String?
+  stateId             String?         @map("state_id")
+  districtId          String?         @map("district_id")
+  preferredLanguage   String          @default("te") @map("preferred_language")
+  fcmToken            String?         @map("fcm_token")
+  isActive            Boolean         @default(true) @map("is_active")
+  isPremium           Boolean         @default(false) @map("is_premium")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+  deletedAt           DateTime?       @map("deleted_at")
+  preferredCategories String          @default("[]") @map("preferred_categories")
+  bookmarks           Bookmark[]
+  comments            Comment[]
+  newsReactions       NewsReaction[]
+  district            District?       @relation(fields: [districtId], references: [id])
+  state               State?          @relation(fields: [stateId], references: [id])
+  videoReactions      VideoReaction[]
 
   @@map("users")
 }
 
-// ============================================================
-// NEWS (The Core Entity)
-// ============================================================
-
 model News {
-  id             String    @id @default(cuid())
-  title          String
-  shortDesc      String?   @map("short_desc")
-  content        String?
-  categoryId     String    @map("category_id")
-  stateId        String    @map("state_id")
-  districtId     String?   @map("district_id")
-  thumbnailUrl   String    @map("thumbnail_url")
-  imagesUrls     String    @default("[]") @map("images_urls") // JSON array string
-  videoUrl       String?   @map("video_url")
-  sourceType     String    @default("original") @map("source_type") // original, reporter, rss
-  reporterId     String?   @map("reporter_id")
-  priority       String    @default("normal") // normal, high, breaking
-  status         String    @default("draft") // draft, pending_review, published, rejected, archived
-  rejectReason   String?   @map("reject_reason")
-  publishedAt    DateTime? @map("published_at")
-  expiresAt      DateTime? @map("expires_at")
-  isFeatured     Boolean   @default(false) @map("is_featured")
-  viewsCount     Int       @default(0) @map("views_count")
-  sharesCount    Int       @default(0) @map("shares_count")
-  createdBy      String    @map("created_by")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  deletedAt      DateTime? @map("deleted_at")
-
-  category    Category  @relation(fields: [categoryId], references: [id])
-  state       State     @relation(fields: [stateId], references: [id])
-  district    District? @relation(fields: [districtId], references: [id])
-  reporter    Reporter? @relation(fields: [reporterId], references: [id])
-  admin       Admin     @relation(fields: [createdBy], references: [id])
-  tags        NewsTag[]
-  bookmarks   Bookmark[]
-  reactions   NewsReaction[]
-  comments    Comment[]
+  id           String         @id @default(cuid())
+  title        String
+  shortDesc    String?        @map("short_desc")
+  content      String?
+  categoryId   String         @map("category_id")
+  stateId      String         @map("state_id")
+  districtId   String?        @map("district_id")
+  thumbnailUrl String         @map("thumbnail_url")
+  imagesUrls   String         @default("[]") @map("images_urls")
+  videoUrl     String?        @map("video_url")
+  sourceType   String         @default("original") @map("source_type")
+  reporterId   String?        @map("reporter_id")
+  priority     String         @default("normal")
+  status       String         @default("draft")
+  rejectReason String?        @map("reject_reason")
+  publishedAt  DateTime?      @map("published_at")
+  expiresAt    DateTime?      @map("expires_at")
+  isFeatured   Boolean        @default(false) @map("is_featured")
+  viewsCount   Int            @default(0) @map("views_count")
+  sharesCount  Int            @default(0) @map("shares_count")
+  createdBy    String         @map("created_by")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  deletedAt    DateTime?      @map("deleted_at")
+  bookmarks    Bookmark[]
+  comments     Comment[]
+  category     Category       @relation(fields: [categoryId], references: [id])
+  admin        Admin          @relation(fields: [createdBy], references: [id])
+  district     District?      @relation(fields: [districtId], references: [id])
+  reporter     Reporter?      @relation(fields: [reporterId], references: [id])
+  state        State          @relation(fields: [stateId], references: [id])
+  reactions    NewsReaction[]
+  tags         NewsTag[]
 
   @@index([status, publishedAt(sort: Desc), districtId])
   @@index([status, publishedAt(sort: Desc), categoryId])
-
   @@map("news")
 }
 
-// ============================================================
-// VIDEOS
-// ============================================================
-
 model Video {
-  id          String    @id @default(cuid())
-  title       String
-  description String?
-  videoUrl    String    @map("video_url")
-  thumbnailUrl String?  @map("thumbnail_url")
-  duration    Int       @default(0) // seconds
-  categoryId  String?   @map("category_id")
-  status      String    @default("draft") // draft, published, archived
-  viewsCount  Int       @default(0) @map("views_count")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")
-
-  category    Category?       @relation(fields: [categoryId], references: [id])
-  reactions   VideoReaction[]
+  id           String          @id @default(cuid())
+  title        String
+  description  String?
+  videoUrl     String          @map("video_url")
+  thumbnailUrl String?         @map("thumbnail_url")
+  duration     Int             @default(0)
+  categoryId   String?         @map("category_id")
+  status       String          @default("draft")
+  viewsCount   Int             @default(0) @map("views_count")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+  deletedAt    DateTime?       @map("deleted_at")
+  reactions    VideoReaction[]
+  category     Category?       @relation(fields: [categoryId], references: [id])
 
   @@map("videos")
 }
 
-// ============================================================
-// CUSTOM ADS
-// ============================================================
-
 model CustomAd {
-  id               String    @id @default(cuid())
-  title            String
-  advertiser       String
-  type             String    @default("image") // image, video
-  imagesUrls       String    @default("[]") @map("images_urls") // JSON array string
-  layout           String    @default("grid") // grid, carousel
-  videoUrl         String?   @map("video_url")
-  clickUrl         String?   @map("click_url")
-  placement        String    @default("feed_inline") // home_banner, feed_inline, article_banner, interstitial
-  frequency        Int       @default(5) @map("frequency") // Show ad every N items in feed
-  targetStateIds   String    @default("[]") @map("target_state_ids") // JSON array string
-  targetCategoryIds String   @default("[]") @map("target_category_ids") // JSON array string
-  impressionsLimit Int       @default(0) @map("impressions_limit")
-  impressionsServed Int      @default(0) @map("impressions_served")
-  clicksServed     Int       @default(0) @map("clicks_served")
-  startDate        DateTime? @map("start_date")
-  endDate          DateTime? @map("end_date")
-  isActive         Boolean   @default(true) @map("is_active")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
-  deletedAt        DateTime? @map("deleted_at")
+  id                String    @id @default(cuid())
+  title             String
+  advertiser        String
+  type              String    @default("image")
+  imagesUrls        String    @default("[]") @map("images_urls")
+  layout            String    @default("grid")
+  videoUrl          String?   @map("video_url")
+  clickUrl          String?   @map("click_url")
+  placement         String    @default("feed_inline")
+  frequency         Int       @default(5) @map("frequency")
+  targetStateIds    String    @default("[]") @map("target_state_ids")
+  targetCategoryIds String    @default("[]") @map("target_category_ids")
+  impressionsLimit  Int       @default(0) @map("impressions_limit")
+  impressionsServed Int       @default(0) @map("impressions_served")
+  clicksServed      Int       @default(0) @map("clicks_served")
+  startDate         DateTime? @map("start_date")
+  endDate           DateTime? @map("end_date")
+  isActive          Boolean   @default(true) @map("is_active")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
 
   @@map("custom_ads")
 }
-
-// ============================================================
-// PUSH NOTIFICATIONS
-// ============================================================
 
 model PushNotification {
   id             String    @id @default(cuid())
   title          String
   body           String
   imageUrl       String?   @map("image_url")
-  targetType     String    @default("all") // all, district, category
+  targetType     String    @default("all")
   targetValue    String?   @map("target_value")
   newsId         String?   @map("news_id")
   scheduledAt    DateTime? @map("scheduled_at")
-  status         String    @default("draft") // draft, scheduled, sent, failed
+  status         String    @default("draft")
   sentCount      Int       @default(0) @map("sent_count")
   deliveredCount Int       @default(0) @map("delivered_count")
   openedCount    Int       @default(0) @map("opened_count")
@@ -307,24 +253,16 @@ model PushNotification {
   @@map("push_notifications")
 }
 
-// ============================================================
-// SETTINGS (Remote Config)
-// ============================================================
-
 model Setting {
   id          String   @id @default(cuid())
   key         String   @unique
-  value       String   // JSON string
+  value       String
   description String?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("settings")
 }
-
-// ============================================================
-// AUDIT LOGS
-// ============================================================
 
 model AuditLog {
   id        String   @id @default(cuid())
@@ -333,46 +271,36 @@ model AuditLog {
   entity    String
   entityId  String?  @map("entity_id")
   ipAddress String?  @map("ip_address")
-  changes   String   @default("{}") // JSON string
+  changes   String   @default("{}")
   createdAt DateTime @default(now()) @map("created_at")
-
   admin     Admin    @relation(fields: [adminId], references: [id])
 
   @@map("audit_logs")
 }
 
-// ============================================================
-// MEDIA LIBRARY
-// ============================================================
-
 model Media {
-  id          String   @id @default(cuid())
-  filename    String
-  originalUrl String   @map("original_url")
-  thumbnailUrl String? @map("thumbnail_url")
-  mimeType    String?  @map("mime_type")
-  size        Int      @default(0) // bytes
-  alt         String?
-  uploadedBy  String?  @map("uploaded_by")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")
+  id           String    @id @default(cuid())
+  filename     String
+  originalUrl  String    @map("original_url")
+  thumbnailUrl String?   @map("thumbnail_url")
+  mimeType     String?   @map("mime_type")
+  size         Int       @default(0)
+  alt          String?
+  uploadedBy   String?   @map("uploaded_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
 
   @@map("media")
 }
-
-// ============================================================
-// BOOKMARKS & REACTIONS
-// ============================================================
 
 model Bookmark {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
   newsId    String   @map("news_id")
   createdAt DateTime @default(now()) @map("created_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  news News @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  news      News     @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, newsId])
   @@map("bookmarks")
@@ -382,11 +310,10 @@ model NewsReaction {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
   newsId    String   @map("news_id")
-  type      String   @default("like") // like, heart, etc.
+  type      String   @default("like")
   createdAt DateTime @default(now()) @map("created_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  news News @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  news      News     @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, newsId])
   @@map("news_reactions")
@@ -398,32 +325,26 @@ model VideoReaction {
   videoId   String   @map("video_id")
   type      String   @default("like")
   createdAt DateTime @default(now()) @map("created_at")
-
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@unique([userId, videoId])
   @@map("video_reactions")
 }
 
-// ============================================================
-// COMMENTS
-// ============================================================
-
 model Comment {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id")
-  newsId    String   @map("news_id")
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  newsId    String    @map("news_id")
   content   String
-  parentId  String?  @map("parent_id")
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  news     News      @relation(fields: [newsId], references: [id], onDelete: Cascade)
-  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
-  replies  Comment[] @relation("CommentReplies")
+  parentId  String?   @map("parent_id")
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  news      News      @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentReplies")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([newsId, createdAt(sort: Desc)])
   @@map("comments")
