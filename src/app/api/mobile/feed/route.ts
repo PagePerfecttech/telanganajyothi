@@ -35,8 +35,9 @@ export async function GET(request: NextRequest) {
     if (authHeader) {
       try {
         const decodedToken = await verifyFirebaseToken(authHeader);
-        if (decodedToken?.phone_number) {
-          dbUser = await db.user.findUnique({ where: { phone: decodedToken.phone_number } });
+        const phone = decodedToken?.phone_number || (decodedToken?.email ? `email_${decodedToken.email}` : decodedToken?.uid);
+        if (phone) {
+          dbUser = await db.user.findUnique({ where: { phone } });
         }
       } catch (e) {
         console.error('Invalid token in feed:', e);

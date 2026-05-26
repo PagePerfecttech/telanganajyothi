@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: e.message }, { status: 401 })
     }
 
-    const phone = decodedToken.phone_number;
+    const phone = decodedToken.phone_number || (decodedToken.email ? `email_${decodedToken.email}` : decodedToken.uid);
     const user = await db.user.findUnique({ where: { phone } });
     if (!user) {
        return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: e.message }, { status: 401 })
     }
 
-    const phone = decodedToken.phone_number;
+    const phone = decodedToken.phone_number || (decodedToken.email ? `email_${decodedToken.email}` : decodedToken.uid);
     const user = await db.user.findUnique({ where: { phone } });
     if (!user) {
        return NextResponse.json({ error: 'User not found' }, { status: 404 })
