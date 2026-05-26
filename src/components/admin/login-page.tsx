@@ -52,10 +52,10 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-xl border-0">
         <CardHeader className="text-center space-y-4 pb-2">
           <div className="mx-auto w-20 h-20 rounded-xl overflow-hidden flex items-center justify-center shadow-lg bg-white p-1">
-            <img src="/logo.png" alt="Telangana Jyothi Logo" className="w-full h-full object-contain" />
+            <img src="/logo.png" alt="Spot News Logo" className="w-full h-full object-contain" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold">Telangana Jyothi</CardTitle>
+            <CardTitle className="text-2xl font-bold">Spot News</CardTitle>
             <CardDescription className="text-base font-medium text-red-600">Spot News - Admin</CardDescription>
           </div>
         </CardHeader>

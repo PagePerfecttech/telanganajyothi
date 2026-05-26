@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Telangana Jyothi Spot News - Admin Dashboard",
-  description: "Admin dashboard for managing Telangana Jyothi Spot News content, reporters, ads, and app configuration.",
+  title: "Spot News - Admin Dashboard",
+  description: "Admin dashboard for managing Spot News content, reporters, ads, and app configuration. A Product of Telangana Jyothi.",
   icons: {
     icon: [
       { url: '/favicon.ico' },

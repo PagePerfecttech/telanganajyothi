@@ -62,7 +62,10 @@ function SidebarNav({
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <h1 className="text-sm font-bold text-white leading-tight">Telangana Jyothi</h1>
+            <div className="flex flex-col">
+              <h1 className="text-sm font-bold text-white leading-tight">Spot News</h1>
+              <span className="text-[10px] text-white/80 leading-tight">by Telangana Jyothi</span>
+            </div>
             <p className="text-[10px] text-gray-400 leading-tight">Spot News Admin</p>
           </div>
         )}
