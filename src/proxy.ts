@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { jwtVerify } from 'jose'
 
 /**
  * Next.js 16 Proxy (formerly middleware)
  * Validates Bearer token on all /api/admin/* routes (except login)
- * Token format: base64(id:email:timestamp)
  */
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public routes that don't need authentication
@@ -28,27 +28,11 @@ export function proxy(request: NextRequest) {
 
     const token = authHeader.substring(7) // Remove 'Bearer '
 
-    // Validate token format: base64(id:email:timestamp)
     try {
-      const decoded = Buffer.from(token, 'base64').toString('utf-8')
-      const parts = decoded.split(':')
-      if (parts.length < 3) {
-        return NextResponse.json({ error: 'Invalid token format' }, { status: 401 })
-      }
-
-      // Check token expiry (24 hours)
-      const timestamp = parseInt(parts[parts.length - 1], 10)
-      if (isNaN(timestamp)) {
-        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-      }
-
-      const tokenAge = Date.now() - timestamp
-      const MAX_TOKEN_AGE = 24 * 60 * 60 * 1000 // 24 hours
-      if (tokenAge > MAX_TOKEN_AGE) {
-        return NextResponse.json({ error: 'Token expired. Please login again.' }, { status: 401 })
-      }
+      const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_secret_key_for_dev')
+      await jwtVerify(token, secret)
     } catch {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      return NextResponse.json({ error: 'Token expired or invalid. Please login again.' }, { status: 401 })
     }
   }
 
