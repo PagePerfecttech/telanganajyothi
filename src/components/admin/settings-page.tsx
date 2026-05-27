@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Settings, Shield, Wrench, MessageSquare, Moon, Video, Bell, Bookmark, Share, Save } from 'lucide-react'
+import { Settings, Shield, Wrench, MessageSquare, Moon, Video, Bell, Bookmark, Share, Save, Megaphone } from 'lucide-react'
 import { authFetch, authFetchJSON, authFetchJson } from '@/lib/utils'
 
 export default function SettingsPage() {
@@ -118,6 +118,67 @@ export default function SettingsPage() {
               </div>
             )
           })}
+        </CardContent>
+      </Card>
+
+      {/* Ad Management */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><Megaphone className="h-5 w-5 text-red-600" /> Ad Management</CardTitle>
+          <CardDescription>Configure Google AdMob IDs and Custom Ads</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm">Global Ad Settings</h3>
+            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+              <div><Label className="font-medium">Enable AdMob Feed Ads</Label><p className="text-xs text-muted-foreground">Show native ads in the news feed</p></div>
+              <Switch checked={settings.admob_feed_enabled !== 'false'} onCheckedChange={v => updateSetting('admob_feed_enabled', String(v))} />
+            </div>
+            <div className="grid grid-cols-1 gap-2 pt-2">
+              <Label>Ad Feed Frequency (Posts between ads)</Label>
+              <Input type="number" value={settings.admob_feed_frequency || '4'} onChange={e => updateSetting('admob_feed_frequency', e.target.value)} />
+            </div>
+          </div>
+          
+          <Separator />
+          
+          <div className="space-y-4">
+            <h3 className="font-semibold text-sm">AdMob IDs (Android)</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>App Open ID</Label><Input value={settings.admob_app_open_id_android || ''} onChange={e => updateSetting('admob_app_open_id_android', e.target.value)} placeholder="ca-app-pub-..." /></div>
+              <div className="space-y-2"><Label>Native ID</Label><Input value={settings.admob_native_id_android || ''} onChange={e => updateSetting('admob_native_id_android', e.target.value)} placeholder="ca-app-pub-..." /></div>
+              <div className="space-y-2"><Label>Interstitial ID</Label><Input value={settings.admob_interstitial_id_android || ''} onChange={e => updateSetting('admob_interstitial_id_android', e.target.value)} placeholder="ca-app-pub-..." /></div>
+              <div className="space-y-2"><Label>Banner ID</Label><Input value={settings.admob_banner_id_android || ''} onChange={e => updateSetting('admob_banner_id_android', e.target.value)} placeholder="ca-app-pub-..." /></div>
+            </div>
+          </div>
+
+          <Separator />
+          
+          <div className="space-y-4">
+            <h3 className="font-semibold text-sm">AdMob IDs (iOS)</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>App Open ID</Label><Input value={settings.admob_app_open_id_ios || ''} onChange={e => updateSetting('admob_app_open_id_ios', e.target.value)} placeholder="ca-app-pub-..." /></div>
+              <div className="space-y-2"><Label>Native ID</Label><Input value={settings.admob_native_id_ios || ''} onChange={e => updateSetting('admob_native_id_ios', e.target.value)} placeholder="ca-app-pub-..." /></div>
+              <div className="space-y-2"><Label>Interstitial ID</Label><Input value={settings.admob_interstitial_id_ios || ''} onChange={e => updateSetting('admob_interstitial_id_ios', e.target.value)} placeholder="ca-app-pub-..." /></div>
+              <div className="space-y-2"><Label>Banner ID</Label><Input value={settings.admob_banner_id_ios || ''} onChange={e => updateSetting('admob_banner_id_ios', e.target.value)} placeholder="ca-app-pub-..." /></div>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-4">
+            <h3 className="font-semibold text-sm">Custom Sponsor Banner (Overrides AdMob Banner)</h3>
+            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+              <div><Label className="font-medium">Enable Custom Banner</Label><p className="text-xs text-muted-foreground">Show your own banner image at the bottom of the feed instead of AdMob</p></div>
+              <Switch checked={settings.custom_banner_enabled === 'true'} onCheckedChange={v => updateSetting('custom_banner_enabled', String(v))} />
+            </div>
+            {settings.custom_banner_enabled === 'true' && (
+              <div className="grid grid-cols-1 gap-4 pt-2">
+                <div className="space-y-2"><Label>Banner Image URL</Label><Input value={settings.custom_banner_image_url || ''} onChange={e => updateSetting('custom_banner_image_url', e.target.value)} placeholder="https://..." /></div>
+                <div className="space-y-2"><Label>Click Link URL</Label><Input value={settings.custom_banner_link_url || ''} onChange={e => updateSetting('custom_banner_link_url', e.target.value)} placeholder="https://..." /></div>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

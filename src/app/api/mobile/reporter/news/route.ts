@@ -3,7 +3,24 @@ import { db } from '@/lib/db'
 import { verifyFirebaseToken } from '@/lib/firebase-admin'
 import { s3Client, R2_BUCKET, R2_PUBLIC_URL } from '@/lib/r2'
 import { PutObjectCommand } from '@aws-sdk/client-s3'
-import path from 'path'
+
+async function uploadFileToR2(file: File, prefix: string): Promise<string> {
+  const timestamp = Date.now()
+  const randomStr = Math.random().toString(36).substring(2, 8)
+  const ext = file.name.split('.').pop() || 'jpg'
+  const filename = `${prefix}-${timestamp}-${randomStr}.${ext}`
+  const buffer = Buffer.from(await file.arrayBuffer())
+  
+  await s3Client.send(
+    new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: filename,
+      Body: buffer,
+      ContentType: file.type || 'application/octet-stream',
+    })
+  )
+  return `${R2_PUBLIC_URL}/${filename}`
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,9 +43,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Not an active reporter' }, { status: 403 })
     }
 
-    const data = await request.json()
-    const { title, shortDesc, categoryId, stateId, districtId, thumbnailBase64 } = data;
-    let { thumbnailUrl } = data;
+    let title, shortDesc, categoryId, stateId, districtId, thumbnailUrl, videoUrl, thumbnailBase64;
+    
+    const contentType = request.headers.get('content-type') || '';
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      title = formData.get('title') as string;
+      shortDesc = formData.get('shortDesc') as string;
+      categoryId = formData.get('categoryId') as string;
+      stateId = formData.get('stateId') as string;
+      districtId = formData.get('districtId') as string;
+      
+      const file = formData.get('file') as File | null;
+      if (file && file.size > 0) {
+         thumbnailUrl = await uploadFileToR2(file, 'reporter-thumb');
+      } else {
+         thumbnailUrl = formData.get('thumbnailUrl') as string | null;
+      }
+
+      const videoFile = formData.get('videoFile') as File | null;
+      if (videoFile && videoFile.size > 0) {
+         videoUrl = await uploadFileToR2(videoFile, 'reporter-video');
+      } else {
+         videoUrl = formData.get('videoUrl') as string | null;
+      }
+    } else {
+      const data = await request.json()
+      title = data.title;
+      shortDesc = data.shortDesc;
+      categoryId = data.categoryId;
+      stateId = data.stateId;
+      districtId = data.districtId;
+      thumbnailBase64 = data.thumbnailBase64;
+      thumbnailUrl = data.thumbnailUrl;
+      videoUrl = data.videoUrl;
+    }
 
     if (!title || !categoryId || !stateId) {
        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -56,14 +105,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!thumbnailUrl) {
-       return NextResponse.json({ error: 'Thumbnail is required' }, { status: 400 })
+    if (!thumbnailUrl && !videoUrl) {
+       return NextResponse.json({ error: 'Thumbnail or Video is required' }, { status: 400 })
     }
 
-    // Find a system admin to assign as creator, or allow reporter creation
-    // The schema requires `createdBy` which is an Admin ID. 
-    // We'll just fetch any admin to satisfy the constraint, or maybe we need to update schema?
-    // Let's find the first admin.
+    // Find a system admin to assign as creator
     const admin = await db.admin.findFirst();
     if (!admin) {
       return NextResponse.json({ error: 'System configuration error: No admins found' }, { status: 500 })
@@ -76,7 +122,8 @@ export async function POST(request: NextRequest) {
         categoryId,
         stateId,
         districtId: districtId || reporter.districtId,
-        thumbnailUrl,
+        thumbnailUrl: thumbnailUrl || '',
+        videoUrl,
         sourceType: 'reporter',
         reporterId: reporter.id,
         status: reporter.canPublishDirectly ? 'published' : 'pending_review',
