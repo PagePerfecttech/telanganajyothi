@@ -5,12 +5,13 @@ export const revalidate = 60 // Cache for 60 seconds
 
 export async function GET() {
   try {
-    // Fetch settings that start with admob_ or custom_ad_
+    // Fetch settings that start with admob_, custom_ad_, or custom_banner_
     const settings = await db.setting.findMany({
       where: {
         OR: [
           { key: { startsWith: 'admob_' } },
-          { key: { startsWith: 'custom_ad_' } }
+          { key: { startsWith: 'custom_ad_' } },
+          { key: { startsWith: 'custom_banner_' } }
         ]
       }
     })

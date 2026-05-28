@@ -162,7 +162,7 @@ export default function AdsPage() {
     )
   }
 
-  const AdTable = ({ data, type }: { data: AdItem[]; type: 'poster' | 'video' }) => (
+  const renderAdTable = (data: AdItem[], type: 'poster' | 'video') => (
     <Card className="border-0 shadow-sm">
       <CardContent className="p-0">
         {loading ? (
@@ -275,7 +275,7 @@ export default function AdsPage() {
               <Plus className="h-4 w-4 mr-2" /> Create Poster Ad
             </Button>
           </div>
-          <AdTable data={posterAds} type="poster" />
+          {renderAdTable(posterAds, 'poster')}
         </TabsContent>
 
         <TabsContent value="video" className="space-y-4 mt-4">
@@ -287,7 +287,7 @@ export default function AdsPage() {
               <Plus className="h-4 w-4 mr-2" /> Create Video Ad
             </Button>
           </div>
-          <AdTable data={videoAds} type="video" />
+          {renderAdTable(videoAds, 'video')}
         </TabsContent>
 
         <TabsContent value="admob" className="space-y-4 mt-4">

@@ -288,6 +288,9 @@ async function main() {
     { key: 'admob_native_id', value: '', description: 'AdMob Native Ad Unit ID' },
     { key: 'admob_rewarded_id', value: '', description: 'AdMob Rewarded Ad Unit ID' },
     { key: 'admob_frequency_cap', value: '5', description: 'Ad frequency cap per session' },
+    { key: 'custom_banner_enabled', value: 'true', description: 'Custom banner ads enabled' },
+    { key: 'custom_banner_image_url', value: 'https://placehold.co/800x100/DC2626/white?text=Telangana+Jyothi+Banner+Ad', description: 'Custom banner ad image URL' },
+    { key: 'custom_banner_link_url', value: 'https://telanganajyothi.vercel.app', description: 'Custom banner ad click URL' },
     { key: 'force_update_android', value: '1.0.0', description: 'Minimum Android version' },
     { key: 'force_update_ios', value: '1.0.0', description: 'Minimum iOS version' },
     { key: 'force_update_hard_block', value: 'false', description: 'Hard block outdated apps' },
@@ -360,10 +363,13 @@ async function main() {
 
   // 13. Create sample users
   for (let i = 0; i < 10; i++) {
+    const phone = `900000000${i}`
     const district = allDistricts[i % allDistricts.length]
-    await prisma.user.create({
-      data: {
-        phone: `900000000${i}`,
+    await prisma.user.upsert({
+      where: { phone },
+      update: {},
+      create: {
+        phone,
         name: `User ${i + 1}`,
         stateId: telangana.id,
         districtId: district.id,

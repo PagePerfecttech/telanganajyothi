@@ -5,42 +5,101 @@ import { auth } from '@/lib/firebase-admin'
 
 export async function POST(request: NextRequest) {
   try {
-    const { payload, signature, signatureAlgorithm } = await request.json()
+    const body = await request.json()
+    const { code, codeVerifier, payload, signature, signatureAlgorithm } = body
 
-    if (!payload || !signature) {
-      return NextResponse.json({ error: 'Payload and signature required' }, { status: 400 })
-    }
+    let phone: string
+    let name: string | undefined
 
-    // 1. Fetch public keys from Truecaller
-    const tcKeysRes = await fetch('https://api4.truecaller.com/v1/key', { method: 'GET' })
-    const tcKeys = await tcKeysRes.json()
-    
-    // 2. Find matching key
-    let isValid = false;
-    for (const keyObj of tcKeys) {
-       try {
-         const verifier = crypto.createVerify('SHA512');
-         verifier.update(payload);
-         const verified = verifier.verify(keyObj.key, signature, 'base64');
-         if (verified) {
-            isValid = true;
-            break;
+    if (code && codeVerifier) {
+      // 1. Exchange authorization code for token
+      const tokenRes = await fetch('https://oauth-account-noneu.truecaller.com/v1/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: 'lvdgepjfe0tgii9s4tlvq4so8v5nk-qvf6eurkmggc4',
+          code,
+          code_verifier: codeVerifier,
+        }),
+      })
+
+      if (!tokenRes.ok) {
+        const errText = await tokenRes.text()
+        console.error('Truecaller token exchange failed:', errText)
+        return NextResponse.json({ error: 'Truecaller token exchange failed', details: errText }, { status: 400 })
+      }
+
+      const tokenData = await tokenRes.json()
+      const accessToken = tokenData.access_token
+
+      if (!accessToken) {
+        return NextResponse.json({ error: 'Access token missing' }, { status: 400 })
+      }
+
+      // 2. Fetch user profile information
+      const userinfoRes = await fetch('https://oauth-account-noneu.truecaller.com/v1/userinfo', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!userinfoRes.ok) {
+        const errText = await userinfoRes.text()
+        console.error('Truecaller userinfo fetch failed:', errText)
+        return NextResponse.json({ error: 'Truecaller userinfo fetch failed', details: errText }, { status: 400 })
+      }
+
+      const userinfo = await userinfoRes.json()
+      const rawPhone = userinfo.phone_number
+      if (!rawPhone) {
+        return NextResponse.json({ error: 'Phone number missing in Truecaller profile' }, { status: 400 })
+      }
+
+      phone = rawPhone.startsWith('+') ? rawPhone : '+' + rawPhone
+      name = `${userinfo.given_name || ''} ${userinfo.family_name || ''}`.trim() || undefined
+    } else {
+      if (!payload || !signature) {
+        return NextResponse.json({ error: 'Payload/signature or code/codeVerifier required' }, { status: 400 })
+      }
+
+      // 1. Fetch public keys from Truecaller
+      const tcKeysRes = await fetch('https://api4.truecaller.com/v1/key', { method: 'GET' })
+      const tcKeys = await tcKeysRes.json()
+      
+      // 2. Find matching key
+      let isValid = false;
+      for (const keyObj of tcKeys) {
+         try {
+           const verifier = crypto.createVerify('SHA512');
+           verifier.update(payload);
+           const verified = verifier.verify(keyObj.key, signature, 'base64');
+           if (verified) {
+              isValid = true;
+              break;
+           }
+         } catch (e) {
+            // ignore error with this key, try next
          }
-       } catch (e) {
-          // ignore error with this key, try next
-       }
-    }
+      }
 
-    if (!isValid) {
-      return NextResponse.json({ error: 'Invalid Truecaller Signature' }, { status: 401 })
-    }
+      if (!isValid) {
+        return NextResponse.json({ error: 'Invalid Truecaller Signature' }, { status: 401 })
+      }
 
-    // 3. Decode payload
-    const decodedPayload = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'))
-    const phone = decodedPayload.phoneNumber
+      // 3. Decode payload
+      const decodedPayload = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'))
+      const rawPhone = decodedPayload.phoneNumber
 
-    if (!phone) {
-      return NextResponse.json({ error: 'Phone number not found in Truecaller profile' }, { status: 400 })
+      if (!rawPhone) {
+        return NextResponse.json({ error: 'Phone number not found in Truecaller profile' }, { status: 400 })
+      }
+
+      phone = rawPhone.startsWith('+') ? rawPhone : '+' + rawPhone
+      name = `${decodedPayload.firstName || ''} ${decodedPayload.lastName || ''}`.trim() || undefined
     }
 
     // 4. Find or create user
@@ -49,7 +108,7 @@ export async function POST(request: NextRequest) {
       user = await db.user.create({ 
          data: { 
            phone,
-           name: `${decodedPayload.firstName || ''} ${decodedPayload.lastName || ''}`.trim() || undefined
+           name
          } 
       })
     }
