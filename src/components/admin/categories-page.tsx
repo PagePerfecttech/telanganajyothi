@@ -37,7 +37,7 @@ export default function CategoriesPage() {
   const fetchCategories = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await authFetchJson<CategoryItem[]>('/api/admin/categories')
+      const data = await authFetchJson<CategoryItem[]>('/api/admin/categories', undefined, true)
       setCategories(data)
     } catch (err) { console.error(err); toast.error('Failed to load categories') }
     finally { setLoading(false) }

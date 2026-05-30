@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
-    const { name, email, bio, stateId, districtId, beat, idProofUrl } = data;
+    const { name, email, bio, stateId, districtId, beat, idProofUrl, avatar } = data;
 
     // A reporter needs a state, district and ID proof
     if (!stateId || !districtId || !idProofUrl) {
@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
         districtId,
         beat,
         idProofUrl,
+        avatar,
         status: 'pending',
       }
     })

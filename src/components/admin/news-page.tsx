@@ -107,11 +107,12 @@ export default function NewsPage() {
     const loadDeps = async () => {
       try {
         const [cats, stateList, dists, reps, tagList] = await Promise.all([
-          authFetchJson<Category[]>('/api/admin/categories'),
-          authFetchJson<State[]>('/api/admin/states'),
-          authFetchJson<District[]>('/api/admin/districts'),
-          authFetchJson<Reporter[]>('/api/admin/reporters'),
-          authFetchJson<Tag[]>('/api/admin/tags'),
+          // skipLogout=true: loading dropdown deps shouldn't log user out on transient 401
+          authFetchJson<Category[]>('/api/admin/categories', undefined, true),
+          authFetchJson<State[]>('/api/admin/states', undefined, true),
+          authFetchJson<District[]>('/api/admin/districts', undefined, true),
+          authFetchJson<Reporter[]>('/api/admin/reporters', undefined, true),
+          authFetchJson<Tag[]>('/api/admin/tags', undefined, true),
         ])
         setCategories(cats)
         setStates(stateList)

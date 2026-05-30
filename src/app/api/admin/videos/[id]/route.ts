@@ -43,6 +43,13 @@ export async function PUT(
       categoryId: data.categoryId || null,
       status: data.status,
     }
+    
+    if (!updateData.thumbnailUrl && updateData.videoUrl) {
+      const match = updateData.videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
+      if (match && match[1]) {
+        updateData.thumbnailUrl = `https://img.youtube.com/vi/${match[1]}/maxresdefault.jpg`;
+      }
+    }
     const video = await db.video.update({
       where: { id },
       data: updateData,

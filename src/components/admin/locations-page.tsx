@@ -32,7 +32,7 @@ export default function LocationsPage() {
 
   const fetchStates = useCallback(async () => {
     try {
-      const data = await authFetchJson<StateItem[]>('/api/admin/states')
+      const data = await authFetchJson<StateItem[]>('/api/admin/states', undefined, true)
       setStates(data)
     } catch { toast.error('Failed to load states') }
   }, [])
@@ -40,7 +40,7 @@ export default function LocationsPage() {
   const fetchDistricts = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await authFetchJson<DistrictItem[]>('/api/admin/districts')
+      const data = await authFetchJson<DistrictItem[]>('/api/admin/districts', undefined, true)
       setDistricts(data)
     } catch { toast.error('Failed to load districts') }
     finally { setLoading(false) }

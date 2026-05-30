@@ -143,7 +143,19 @@ export default function ReportersPage() {
                 <TableBody>
                   {reporters.map(r => (
                     <TableRow key={r.id}>
-                      <TableCell className="font-medium">{r.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {r.avatar ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={r.avatar} alt={r.name} className="w-8 h-8 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xs uppercase">
+                              {r.name.charAt(0)}
+                            </div>
+                          )}
+                          {r.name}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-sm">{r.phone}</TableCell>
                       <TableCell className="text-sm">{r.district?.name || '-'}</TableCell>
                       <TableCell><Badge variant="outline">{r.beat || 'General'}</Badge></TableCell>

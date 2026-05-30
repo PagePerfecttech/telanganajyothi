@@ -17,12 +17,24 @@ export function getAuthHeaders(): Record<string, string> {
 }
 
 /**
- * Handle 401 responses - clear auth and redirect to login
+ * Debounce timer to prevent multiple 401s from firing multiple logout events
  */
-function handleUnauthorized(response: Response): Response {
-  if (response.status === 401 && typeof window !== 'undefined') {
+let unauthorizedTimer: ReturnType<typeof setTimeout> | null = null
+
+/**
+ * Handle 401 responses - clear auth and redirect to login
+ * Debounced to prevent multiple parallel requests each firing a logout
+ */
+function handleUnauthorized(response: Response, skipLogout = false): Response {
+  if (response.status === 401 && typeof window !== 'undefined' && !skipLogout) {
     localStorage.removeItem('admin_token')
-    window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+    // Debounce: only fire once even if multiple parallel requests all return 401
+    if (!unauthorizedTimer) {
+      unauthorizedTimer = setTimeout(() => {
+        unauthorizedTimer = null
+        window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+      }, 100)
+    }
   }
   return response
 }
@@ -44,28 +56,30 @@ async function safeJsonParse<T = unknown>(response: Response): Promise<T> {
 /**
  * Authenticated fetch wrapper - adds Authorization header to all requests
  * Auto-redirects to login on 401 responses
+ * @param skipLogout - if true, a 401 will NOT trigger the global logout event
  */
-export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+export async function authFetch(url: string, options: RequestInit = {}, skipLogout = false): Promise<Response> {
   const headers = {
     ...getAuthHeaders(),
     ...(options.headers || {}),
   }
   const response = await fetch(url, { cache: 'no-store', ...options, headers })
-  return handleUnauthorized(response)
+  return handleUnauthorized(response, skipLogout)
 }
 
 /**
  * Authenticated JSON fetch - for API calls with JSON body
  * Auto-redirects to login on 401 responses
+ * @param skipLogout - if true, a 401 will NOT trigger the global logout event
  */
-export async function authFetchJSON(url: string, options: RequestInit = {}): Promise<Response> {
+export async function authFetchJSON(url: string, options: RequestInit = {}, skipLogout = false): Promise<Response> {
   const headers = {
     ...getAuthHeaders(),
     'Content-Type': 'application/json',
     ...(options.headers || {}),
   }
   const response = await fetch(url, { cache: 'no-store', ...options, headers })
-  return handleUnauthorized(response)
+  return handleUnauthorized(response, skipLogout)
 }
 
 /**
@@ -83,10 +97,11 @@ export async function apiFetch<T = unknown>(url: string, options: RequestInit = 
 
 /**
  * Safe auth fetch that returns parsed JSON or throws on error
- * Use this for simple GET requests that should return JSON data
+ * Use for GET/POST requests that should return JSON data
+ * @param skipLogout - if true, a 401 will NOT trigger the global logout event (use for non-critical deps)
  */
-export async function authFetchJson<T = unknown>(url: string): Promise<T> {
-  const res = await authFetch(url)
+export async function authFetchJson<T = unknown>(url: string, options?: RequestInit, skipLogout = false): Promise<T> {
+  const res = await authFetch(url, options || {}, skipLogout)
   if (!res.ok) {
     const data = await safeJsonParse<{ error?: string }>(res).catch(() => ({ error: `Request failed (${res.status})` }))
     throw new Error(data.error || `Request failed with status ${res.status}`)

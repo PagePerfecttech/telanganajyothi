@@ -24,12 +24,21 @@ export async function POST(request: NextRequest) {
     const admin = await verifyAuth(request)
     if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const data = await request.json()
+    
+    let thumbnailUrl = data.thumbnailUrl;
+    if (!thumbnailUrl && data.videoUrl) {
+      const match = data.videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
+      if (match && match[1]) {
+        thumbnailUrl = `https://img.youtube.com/vi/${match[1]}/maxresdefault.jpg`;
+      }
+    }
+
     const video = await db.video.create({
       data: {
         title: data.title,
         description: data.description || null,
         videoUrl: data.videoUrl,
-        thumbnailUrl: data.thumbnailUrl || null,
+        thumbnailUrl: thumbnailUrl || null,
         duration: data.duration || 0,
         categoryId: data.categoryId || null,
         status: data.status || 'draft',

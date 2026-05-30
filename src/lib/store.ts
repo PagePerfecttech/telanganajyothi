@@ -68,6 +68,18 @@ export const useAppStore = create<AppState>()(
         isAuthenticated: state.isAuthenticated,
         currentUser: state.currentUser,
       }),
+      // Validate the token still exists in localStorage when store is hydrated
+      // This prevents ghost sessions where store says authenticated but token is gone
+      onRehydrateStorage: () => (state) => {
+        if (state?.isAuthenticated && typeof window !== 'undefined') {
+          const token = localStorage.getItem('admin_token')
+          if (!token) {
+            // Token was cleared but store still says authenticated - reset
+            state.isAuthenticated = false
+            state.currentUser = null
+          }
+        }
+      },
     }
   )
 )
