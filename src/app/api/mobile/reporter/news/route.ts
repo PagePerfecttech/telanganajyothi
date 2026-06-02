@@ -22,6 +22,63 @@ async function uploadFileToR2(file: File, prefix: string): Promise<string> {
   return `${R2_PUBLIC_URL}/${filename}`
 }
 
+export async function GET(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    let decodedToken;
+    try {
+      decodedToken = await verifyFirebaseToken(authHeader);
+    } catch (e: any) {
+      return NextResponse.json({ error: e.message }, { status: 401 })
+    }
+
+    const phone = decodedToken.phone_number;
+    if (!phone) {
+       return NextResponse.json({ error: 'Token missing phone number' }, { status: 401 })
+    }
+
+    const reporter = await db.reporter.findUnique({ where: { phone } })
+    if (!reporter) {
+      return NextResponse.json({ error: 'Not a reporter' }, { status: 403 })
+    }
+
+    const news = await db.news.findMany({
+      where: { reporterId: reporter.id, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        shortDesc: true,
+        thumbnailUrl: true,
+        status: true,
+        rejectReason: true,
+        createdAt: true,
+      }
+    })
+
+    const pending = news.filter(n => n.status === 'pending_review' || n.status === 'draft')
+    const published = news.filter(n => n.status === 'published')
+    const rejected = news.filter(n => n.status === 'rejected')
+
+    return NextResponse.json({
+      counts: {
+        total: news.length,
+        pending: pending.length,
+        published: published.length,
+        rejected: rejected.length,
+      },
+      news: {
+        pending,
+        published,
+        rejected
+      }
+    })
+  } catch (error) {
+    console.error('Reporter news fetch error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
