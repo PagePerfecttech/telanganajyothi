@@ -35,6 +35,42 @@ export async function POST(request: NextRequest) {
         status: data.scheduledAt ? 'scheduled' : (data.sendNow ? 'sent' : 'draft'),
       },
     })
+    
+    // If sending now, trigger Firebase Messaging
+    if (notification.status === 'sent') {
+      try {
+        const { messaging } = await import('@/lib/firebase-admin')
+        
+        const messagePayload: any = {
+          notification: {
+            title: notification.title,
+            body: notification.body,
+          },
+          topic: 'all', // For now we send to a global topic 'all'
+        }
+        
+        if (notification.imageUrl) {
+          messagePayload.notification.imageUrl = notification.imageUrl
+        }
+        
+        if (notification.newsId) {
+          messagePayload.data = {
+            route: `/p/${notification.newsId}`,
+          }
+        }
+        
+        await messaging.send(messagePayload)
+        console.log('Firebase notification sent successfully')
+      } catch (fcmError) {
+        console.error('Error sending Firebase notification:', fcmError)
+        // Update status to failed
+        await db.pushNotification.update({
+          where: { id: notification.id },
+          data: { status: 'failed' }
+        })
+      }
+    }
+
     await logAudit({
       adminId: admin.id,
       action: 'send',

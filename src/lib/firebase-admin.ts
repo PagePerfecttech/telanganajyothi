@@ -19,6 +19,7 @@ if (!admin.apps.length) {
 }
 
 export const auth = admin.auth();
+export const messaging = admin.messaging();
 
 export async function verifyFirebaseToken(authHeader: string | null) {
   if (!authHeader?.startsWith('Bearer ')) {
