@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { logAudit, getClientIp } from '@/lib/audit'
 import { verifyAuth } from '@/lib/auth'
+import { safeJsonParse, safeJsonStringify } from '@/lib/json-utils'
 
 export async function GET(
   request: NextRequest,
@@ -16,9 +17,9 @@ export async function GET(
     return NextResponse.json({
       ...ad,
       type: ad.type === 'image' ? 'poster' : ad.type,
-      imagesUrls: JSON.parse(ad.imagesUrls),
-      targetStateIds: JSON.parse(ad.targetStateIds),
-      targetCategoryIds: JSON.parse(ad.targetCategoryIds),
+      imagesUrls: safeJsonParse<string[]>(ad.imagesUrls, []),
+      targetStateIds: safeJsonParse<string[]>(ad.targetStateIds, []),
+      targetCategoryIds: safeJsonParse<string[]>(ad.targetCategoryIds, []),
       frequency: ad.frequency || 5,
     })
   } catch (error) {
@@ -43,14 +44,14 @@ export async function PUT(
       title: data.title,
       advertiser: data.advertiser,
       type: adType,
-      imagesUrls: JSON.stringify(data.imagesUrls || []),
+      imagesUrls: safeJsonStringify(data.imagesUrls || []),
       layout: data.layout || 'grid',
       videoUrl: data.videoUrl || null,
       clickUrl: data.clickUrl || null,
       placement: data.placement,
       frequency: data.frequency || 5,
-      targetStateIds: JSON.stringify(data.targetStateIds || []),
-      targetCategoryIds: JSON.stringify(data.targetCategoryIds || []),
+      targetStateIds: safeJsonStringify(data.targetStateIds || []),
+      targetCategoryIds: safeJsonStringify(data.targetCategoryIds || []),
       impressionsLimit: data.impressionsLimit,
       startDate: data.startDate ? new Date(data.startDate) : null,
       endDate: data.endDate ? new Date(data.endDate) : null,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyAuth } from '@/lib/auth'
+import { safeJsonParse, safeJsonStringify } from '@/lib/json-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,13 +32,19 @@ export async function GET(request: NextRequest) {
     const [news, total] = await Promise.all([
       db.news.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          title: true,
+          shortDesc: true,
+          thumbnailUrl: true,
+          imagesUrls: true,
+          status: true,
+          priority: true,
+          isFeatured: true,
+          createdAt: true,
+          publishedAt: true,
+          categoryId: true,
           category: { select: { name: true, color: true } },
-          state: { select: { name: true } },
-          district: { select: { name: true } },
-          reporter: { select: { name: true } },
-          admin: { select: { name: true } },
-          tags: { include: { tag: { select: { name: true, slug: true } } } },
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
@@ -48,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     const simplified = news.map(n => ({
       ...n,
-      imagesUrls: JSON.parse(n.imagesUrls || '[]'),
+      imagesUrls: safeJsonParse<string[]>(n.imagesUrls || '[]', []),
     }))
 
     return NextResponse.json({ news: simplified, total, page, limit })
@@ -81,7 +88,7 @@ export async function POST(request: NextRequest) {
         stateId: stateId,
         districtId: data.districtId || null,
         thumbnailUrl: data.thumbnailUrl || '',
-        imagesUrls: JSON.stringify(data.imagesUrls || []),
+        imagesUrls: safeJsonStringify(data.imagesUrls || []),
         videoUrl: data.videoUrl || null,
         sourceType: data.sourceType || 'original',
         reporterId: data.reporterId || null,
@@ -115,7 +122,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({ ...news, imagesUrls: JSON.parse(news.imagesUrls || '[]') }, { status: 201 })
+    return NextResponse.json({ ...news, imagesUrls: safeJsonParse<string[]>(news.imagesUrls || '[]', []) }, { status: 201 })
   } catch (error) {
     console.error('News create error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

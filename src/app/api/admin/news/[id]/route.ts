@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyAuth } from '@/lib/auth'
+import { safeJsonParse, safeJsonStringify } from '@/lib/json-utils'
 
 export async function GET(
   request: NextRequest,
@@ -29,7 +30,7 @@ export async function GET(
 
     return NextResponse.json({
       ...news,
-      imagesUrls: JSON.parse(news.imagesUrls || '[]'),
+      imagesUrls: safeJsonParse<string[]>(news.imagesUrls || '[]', []),
     })
   } catch (error) {
     console.error('News get error:', error)
@@ -56,7 +57,7 @@ export async function PUT(
     if (data.stateId !== undefined) updateData.stateId = data.stateId
     if (data.districtId !== undefined) updateData.districtId = data.districtId || null
     if (data.thumbnailUrl !== undefined) updateData.thumbnailUrl = data.thumbnailUrl || ''
-    if (data.imagesUrls !== undefined) updateData.imagesUrls = JSON.stringify(data.imagesUrls || [])
+    if (data.imagesUrls !== undefined) updateData.imagesUrls = safeJsonStringify(data.imagesUrls || [])
     if (data.videoUrl !== undefined) updateData.videoUrl = data.videoUrl || null
     if (data.sourceType !== undefined) updateData.sourceType = data.sourceType
     if (data.reporterId !== undefined) updateData.reporterId = data.reporterId || null
@@ -98,7 +99,7 @@ export async function PUT(
       },
     })
 
-    return NextResponse.json({ ...news, imagesUrls: JSON.parse(news.imagesUrls || '[]') })
+    return NextResponse.json({ ...news, imagesUrls: safeJsonParse<string[]>(news.imagesUrls || '[]', []) })
   } catch (error) {
     console.error('News update error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

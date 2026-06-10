@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { jwtVerify } from 'jose'
+import { logger } from '@/lib/logger'
 
 /**
  * Verify admin authentication from request headers
@@ -15,23 +16,26 @@ export async function verifyAuth(request: NextRequest): Promise<{
   try {
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('auth.ts: missing or invalid authorization header:', authHeader);
       return null
     }
 
     const token = authHeader.substring(7)
     if (!token) {
-      console.log('auth.ts: missing token after Bearer');
       return null
     }
 
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_secret_key_for_dev')
+    const jwtSecret = process.env.JWT_SECRET
+    if (!jwtSecret) {
+      console.error('JWT_SECRET environment variable is required')
+      return null
+    }
+    const secret = new TextEncoder().encode(jwtSecret)
     let payload;
     try {
       const result = await jwtVerify(token, secret)
       payload = result.payload;
     } catch (err) {
-      console.log('auth.ts: jwtVerify failed', err);
+      logger.debug('JWT verification failed', err)
       return null;
     }
 
@@ -60,12 +64,12 @@ export async function verifyAuth(request: NextRequest): Promise<{
     })
 
     if (!admin) {
-      console.log('auth.ts: admin not found in DB for', adminId, email);
+      logger.debug('Admin not found in DB', { adminId, email })
     }
 
     return admin
   } catch (err) {
-    console.log('auth.ts: unexpected error in verifyAuth', err);
+    logger.debug('Unexpected error in verifyAuth', err)
     return null
   }
 }

@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyFirebaseToken } from '@/lib/firebase-admin'
+import { z } from 'zod'
+
+const applyReporterSchema = z.object({
+  name: z.string().max(100).optional(),
+  email: z.string().email().optional().nullable(),
+  bio: z.string().max(500).optional().nullable(),
+  stateId: z.string().cuid('Invalid state ID'),
+  districtId: z.string().cuid('Invalid district ID'),
+  beat: z.string().max(100).optional().nullable(),
+  idProofUrl: z.string().url('Invalid ID proof URL'),
+  avatar: z.string().url('Invalid avatar URL').optional().nullable(),
+})
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,12 +30,17 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json()
-    const { name, email, bio, stateId, districtId, beat, idProofUrl, avatar } = data;
-
-    // A reporter needs a state, district and ID proof
-    if (!stateId || !districtId || !idProofUrl) {
-      return NextResponse.json({ error: 'State, District, and ID proof are required' }, { status: 400 })
+    
+    // Validate input
+    const parsed = applyReporterSchema.safeParse(data)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: parsed.error.flatten() },
+        { status: 400 }
+      )
     }
+
+    const validatedData = parsed.data
 
     // Check if already applied
     let reporter = await db.reporter.findUnique({ where: { phone } })
@@ -33,15 +50,15 @@ export async function POST(request: NextRequest) {
 
     reporter = await db.reporter.create({
       data: {
-        name: name || phone,
+        name: validatedData.name || phone,
         phone,
-        email,
-        bio,
-        stateId,
-        districtId,
-        beat,
-        idProofUrl,
-        avatar,
+        email: validatedData.email || null,
+        bio: validatedData.bio || null,
+        stateId: validatedData.stateId,
+        districtId: validatedData.districtId,
+        beat: validatedData.beat || null,
+        idProofUrl: validatedData.idProofUrl,
+        avatar: validatedData.avatar || null,
         status: 'pending',
       }
     })

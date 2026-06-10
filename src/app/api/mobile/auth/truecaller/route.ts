@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import crypto from 'crypto'
 import { auth } from '@/lib/firebase-admin'
+import { safeJsonParse } from '@/lib/json-utils'
 
 export async function POST(request: NextRequest) {
   try {
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
       }
 
       // 3. Decode payload
-      const decodedPayload = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'))
+      const decodedPayload = safeJsonParse(Buffer.from(payload, 'base64').toString('utf8'), {})
       const rawPhone = decodedPayload.phoneNumber
 
       if (!rawPhone) {

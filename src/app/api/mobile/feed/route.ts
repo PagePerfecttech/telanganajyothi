@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { z } from 'zod'
 import { verifyFirebaseToken } from '@/lib/firebase-admin'
+import { safeJsonParse } from '@/lib/json-utils'
 
 const feedQuerySchema = z.object({
   district_id: z.string().cuid().optional(),
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
     }
 
     const finalDistrictId = districtId || dbUser?.districtId || undefined;
-    const preferredCats = dbUser?.preferredCategories ? JSON.parse(dbUser.preferredCategories) : [];
+    const preferredCats = safeJsonParse<string[]>(dbUser?.preferredCategories, []);
     
     const where: Record<string, unknown> = {
       status: 'published',
@@ -101,7 +102,7 @@ export async function GET(request: NextRequest) {
     const adFrequency = ads.length > 0 ? (ads[0].frequency || 5) : 5
 
     const feed = news.map((item, index) => {
-      const parsedImages = item.imagesUrls ? JSON.parse(item.imagesUrls) : [];
+      const parsedImages = safeJsonParse<string[]>(item.imagesUrls, []);
       const thumbnail = item.thumbnailUrl || (parsedImages.length > 0 ? parsedImages[0] : '');
       const itemWithImages = { ...item, thumbnailUrl: thumbnail, imagesUrls: parsedImages };
 
@@ -111,9 +112,9 @@ export async function GET(request: NextRequest) {
           type: 'ad',
           ad: {
             ...ad,
-            imagesUrls: JSON.parse(ad.imagesUrls || '[]'),
-            targetStateIds: JSON.parse(ad.targetStateIds || '[]'),
-            targetCategoryIds: JSON.parse(ad.targetCategoryIds || '[]'),
+            imagesUrls: safeJsonParse<string[]>(ad.imagesUrls || '[]', []),
+            targetStateIds: safeJsonParse<string[]>(ad.targetStateIds || '[]', []),
+            targetCategoryIds: safeJsonParse<string[]>(ad.targetCategoryIds || '[]', []),
           },
         }
       }

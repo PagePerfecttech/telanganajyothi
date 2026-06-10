@@ -41,7 +41,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_secret_key_for_dev')
+    const jwtSecret = process.env.JWT_SECRET
+    if (!jwtSecret) {
+      console.error('JWT_SECRET environment variable is not configured')
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+
+    const secret = new TextEncoder().encode(jwtSecret)
     const token = await new SignJWT({ adminId: admin.id, email: admin.email, role: admin.role })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()

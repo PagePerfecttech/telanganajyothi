@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyFirebaseToken } from '@/lib/firebase-admin'
+import { safeJsonParse } from '@/lib/json-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
     });
 
     const mappedBookmarks = bookmarks.map(b => {
-      const parsedImages = b.news.imagesUrls ? JSON.parse(b.news.imagesUrls) : [];
+      const parsedImages = safeJsonParse<string[]>(b.news.imagesUrls, []);
       const thumbnail = b.news.thumbnailUrl || (parsedImages.length > 0 ? parsedImages[0] : '');
       return {
         ...b,

@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import { Metadata } from 'next'
+import { safeJsonParse } from '@/lib/json-utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,10 +25,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
   }
 
-  let images: string[] = []
-  try {
-    images = news.imagesUrls ? JSON.parse(news.imagesUrls) : []
-  } catch (_) {}
+  const images: string[] = safeJsonParse<string[]>(news.imagesUrls, [])
   const imageUrl = news.thumbnailUrl || (images.length > 0 ? images[0] : null)
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://spotnews.in' // Replace with your actual domain
   let finalImageUrl = imageUrl
@@ -81,11 +79,8 @@ export default async function NewsPreviewPage({ params }: PageProps) {
     notFound()
   }
 
-  // Parse imagesUrls
-  let images: string[] = []
-  try {
-    images = news.imagesUrls ? JSON.parse(news.imagesUrls) : []
-  } catch (_) {}
+  // Parse imagesUrls safely
+  const images: string[] = safeJsonParse<string[]>(news.imagesUrls, [])
   const imageUrl = news.thumbnailUrl || (images.length > 0 ? images[0] : null)
 
   return (

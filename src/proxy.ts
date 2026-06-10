@@ -29,7 +29,12 @@ export async function proxy(request: NextRequest) {
     const token = authHeader.substring(7) // Remove 'Bearer '
 
     try {
-      const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_secret_key_for_dev')
+      const jwtSecret = process.env.JWT_SECRET
+      if (!jwtSecret) {
+        console.error('JWT_SECRET environment variable is required')
+        return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+      }
+      const secret = new TextEncoder().encode(jwtSecret)
       await jwtVerify(token, secret)
     } catch {
       return NextResponse.json({ error: 'Token expired or invalid. Please login again.' }, { status: 401 })

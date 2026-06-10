@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyFirebaseToken } from '@/lib/firebase-admin'
+import { safeJsonParse, safeJsonStringify } from '@/lib/json-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       user: user ? {
         ...user,
-        preferredCategories: user.preferredCategories ? JSON.parse(user.preferredCategories) : []
+        preferredCategories: safeJsonParse<string[]>(user.preferredCategories, [])
       } : null,
       reporterStatus: reporter ? reporter.status : 'none',
     })
@@ -66,14 +67,14 @@ export async function POST(request: NextRequest) {
         stateId: data.stateId,
         districtId: data.districtId,
         preferredLanguage: data.preferredLanguage,
-        preferredCategories: data.preferredCategories ? JSON.stringify(data.preferredCategories) : undefined,
+        preferredCategories: data.preferredCategories ? safeJsonStringify(data.preferredCategories) : undefined,
         avatar: data.avatar,
       },
     })
 
     return NextResponse.json({
       ...user,
-      preferredCategories: user.preferredCategories ? JSON.parse(user.preferredCategories) : []
+      preferredCategories: safeJsonParse<string[]>(user.preferredCategories, [])
     })
   } catch (error) {
     console.error('Profile update error:', error)
