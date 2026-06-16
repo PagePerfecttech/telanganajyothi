@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { verifyFirebaseAuth } from '@/lib/firebase-admin'
+import { verifyFirebaseToken } from '@/lib/firebase-admin'
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +10,12 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.split('Bearer ')[1]
-    const decodedToken = await verifyFirebaseAuth(token)
+    let decodedToken;
+    try {
+      decodedToken = await verifyFirebaseToken(token);
+    } catch (e: any) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     
     if (!decodedToken || !decodedToken.phone_number) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
