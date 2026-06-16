@@ -115,7 +115,10 @@ model Reporter {
   updatedAt          DateTime  @updatedAt @map("updated_at")
   deletedAt          DateTime? @map("deleted_at")
   idProofUrl         String?   @map("id_proof_url")
+  coinsBalance       Int       @default(0) @map("coins_balance")
   news               News[]
+  walletTransactions WalletTransaction[]
+  withdrawalRequests WithdrawalRequest[]
   district           District  @relation(fields: [districtId], references: [id])
   state              State     @relation(fields: [stateId], references: [id])
 
@@ -180,8 +183,10 @@ model News {
   district     District?      @relation(fields: [districtId], references: [id])
   reporter     Reporter?      @relation(fields: [reporterId], references: [id])
   state        State          @relation(fields: [stateId], references: [id])
-  reactions    NewsReaction[]
-  tags         NewsTag[]
+  reactions            NewsReaction[]
+  tags                 NewsTag[]
+  youtubePublishStatus String?        @map("youtube_publish_status")
+  youtubeVideoId       String?        @map("youtube_video_id")
 
   @@index([status, publishedAt(sort: Desc), districtId])
   @@index([status, publishedAt(sort: Desc), categoryId])
@@ -201,8 +206,10 @@ model Video {
   createdAt    DateTime        @default(now()) @map("created_at")
   updatedAt    DateTime        @updatedAt @map("updated_at")
   deletedAt    DateTime?       @map("deleted_at")
-  reactions    VideoReaction[]
-  category     Category?       @relation(fields: [categoryId], references: [id])
+  reactions            VideoReaction[]
+  category             Category?       @relation(fields: [categoryId], references: [id])
+  youtubePublishStatus String?         @map("youtube_publish_status")
+  youtubeVideoId       String?         @map("youtube_video_id")
 
   @@map("videos")
 }
@@ -348,4 +355,32 @@ model Comment {
 
   @@index([newsId, createdAt(sort: Desc)])
   @@map("comments")
+}
+
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  reporterId  String   @map("reporter_id")
+  amount      Int
+  type        String   // "CREDIT" or "DEBIT"
+  description String
+  referenceId String?  @map("reference_id") // ID of news/video or withdrawal request
+  createdAt   DateTime @default(now()) @map("created_at")
+  reporter    Reporter @relation(fields: [reporterId], references: [id])
+
+  @@map("wallet_transactions")
+}
+
+model WithdrawalRequest {
+  id          String   @id @default(cuid())
+  reporterId  String   @map("reporter_id")
+  coinsAmount Int      @map("coins_amount")
+  moneyAmount Float    @map("money_amount")
+  upiId       String   @map("upi_id")
+  status      String   @default("pending") // "pending", "processing", "completed", "rejected"
+  adminNotes  String?  @map("admin_notes")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  reporter    Reporter @relation(fields: [reporterId], references: [id])
+
+  @@map("withdrawal_requests")
 }

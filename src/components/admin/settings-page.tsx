@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Settings, Shield, Wrench, MessageSquare, Moon, Video, Bell, Bookmark, Share, Save, Megaphone } from 'lucide-react'
+import { Settings, Shield, Wrench, MessageSquare, Moon, Video as VideoIcon, Bell, Bookmark, Share, Save, Megaphone, Youtube, Coins } from 'lucide-react'
 import { authFetch, authFetchJSON, authFetchJson } from '@/lib/utils'
 
 export default function SettingsPage() {
@@ -50,7 +50,7 @@ export default function SettingsPage() {
   const featureFlags = [
     { key: 'feature_comments', label: 'Comments', desc: 'Allow users to comment on articles', icon: MessageSquare },
     { key: 'feature_dark_mode', label: 'Dark Mode', desc: 'Enable dark mode toggle in app', icon: Moon },
-    { key: 'feature_video_section', label: 'Video Section', desc: 'Show video section in app', icon: Video },
+    { key: 'feature_video_section', label: 'Video Section', desc: 'Show video section in app', icon: VideoIcon },
     { key: 'feature_notifications', label: 'Push Notifications', desc: 'Enable push notifications', icon: Bell },
     { key: 'feature_bookmarks', label: 'Bookmarks', desc: 'Allow users to bookmark articles', icon: Bookmark },
     { key: 'feature_share', label: 'Share', desc: 'Allow users to share articles', icon: Share },
@@ -118,6 +118,73 @@ export default function SettingsPage() {
               </div>
             )
           })}
+        </CardContent>
+      </Card>
+
+      {/* YouTube Shorts Settings */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><Youtube className="h-5 w-5 text-red-600" /> YouTube Shorts Integration</CardTitle>
+          <CardDescription>Connect YouTube channel for auto-publishing videos</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+            <div>
+              <Label className="font-medium">Connection Status</Label>
+              <p className="text-xs text-muted-foreground">
+                {settings.YOUTUBE_REFRESH_TOKEN ? 'Connected (Refresh token found)' : 'Not Connected'}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                const res = await authFetchJson<{ url: string }>('/api/admin/youtube/auth')
+                if (res.url) {
+                  window.location.href = res.url
+                }
+              }}
+            >
+              Connect YouTube
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Reward Tiers Settings */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><Coins className="h-5 w-5 text-red-600" /> Reporter Reward Tiers</CardTitle>
+          <CardDescription>Configure how many coins reporters earn</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Coins for News Approval</Label>
+              <Input 
+                type="number"
+                value={settings.NEWS_APPROVAL_COINS || '10'} 
+                onChange={e => updateSetting('NEWS_APPROVAL_COINS', e.target.value)} 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Coins for Video Approval</Label>
+              <Input 
+                type="number"
+                value={settings.VIDEO_APPROVAL_COINS || '20'} 
+                onChange={e => updateSetting('VIDEO_APPROVAL_COINS', e.target.value)} 
+              />
+            </div>
+          </div>
+          <div className="space-y-2 pt-2">
+            <Label>Coin to INR Conversion Rate</Label>
+            <p className="text-xs text-muted-foreground">e.g., 0.01 means 100 coins = 1 INR</p>
+            <Input 
+              type="number"
+              step="0.001"
+              value={settings.COIN_TO_MONEY_RATE || '0.01'} 
+              onChange={e => updateSetting('COIN_TO_MONEY_RATE', e.target.value)} 
+            />
+          </div>
         </CardContent>
       </Card>
 

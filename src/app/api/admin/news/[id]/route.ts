@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyAuth } from '@/lib/auth'
 import { safeJsonParse, safeJsonStringify } from '@/lib/json-utils'
+import { processNewsApprovalEarning } from '@/lib/wallet-service'
+import { uploadToYouTubeShorts } from '@/lib/youtube-service'
 
 export async function GET(
   request: NextRequest,
@@ -99,6 +101,17 @@ export async function PUT(
       },
     })
 
+    // Process Earning & YouTube if newly published
+    if (data.status === 'published') {
+      const isVideo = !!(news.videoUrl)
+      await processNewsApprovalEarning(id, isVideo)
+      
+      if (isVideo && news.videoUrl) {
+        // Run youtube upload asynchronously
+        uploadToYouTubeShorts(id, news.title, news.shortDesc || '', news.videoUrl, true)
+      }
+    }
+
     return NextResponse.json({ ...news, imagesUrls: safeJsonParse<string[]>(news.imagesUrls || '[]', []) })
   } catch (error) {
     console.error('News update error:', error)
@@ -139,6 +152,15 @@ export async function PATCH(
         changes: JSON.stringify({ status: data.status, rejectReason: data.rejectReason }),
       },
     })
+
+    if (data.status === 'published') {
+      const isVideo = !!(news.videoUrl)
+      await processNewsApprovalEarning(id, isVideo)
+      
+      if (isVideo && news.videoUrl) {
+        uploadToYouTubeShorts(id, news.title, news.shortDesc || '', news.videoUrl, true)
+      }
+    }
 
     return NextResponse.json(news)
   } catch (error) {

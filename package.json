@@ -50,6 +50,7 @@
     "cmdk": "^1.1.1",
     "embla-carousel-react": "^8.6.0",
     "firebase-admin": "^13.10.0",
+    "googleapis": "^173.0.0",
     "input-otp": "^1.4.2",
     "jose": "^6.2.3",
     "lucide-react": "^0.525.0",

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { logAudit, getClientIp } from '@/lib/audit'
 import { verifyAuth } from '@/lib/auth'
+import { uploadToYouTubeShorts } from '@/lib/youtube-service'
 
 export async function GET(
   request: NextRequest,
@@ -62,6 +63,11 @@ export async function PUT(
       ipAddress: getClientIp(request),
       changes: updateData,
     })
+
+    if (updateData.status === 'published' && video.videoUrl) {
+      uploadToYouTubeShorts(id, video.title, video.description || '', video.videoUrl, false)
+    }
+
     return NextResponse.json(video)
   } catch (error) {
     console.error('Video update error:', error)

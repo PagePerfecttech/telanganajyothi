@@ -18,6 +18,7 @@ import NotificationsPage from '@/components/admin/notifications-page'
 import SettingsPage from '@/components/admin/settings-page'
 import MediaPage from '@/components/admin/media-page'
 import AuditLogsPage from '@/components/admin/audit-logs-page'
+import WithdrawalsPage from '@/components/admin/withdrawals-page'
 
 const moduleComponents: Record<ViewType, React.ComponentType> = {
   dashboard: DashboardPage,
@@ -34,6 +35,7 @@ const moduleComponents: Record<ViewType, React.ComponentType> = {
   settings: SettingsPage,
   media: MediaPage,
   'audit-logs': AuditLogsPage,
+  withdrawals: WithdrawalsPage,
 }
 
 export default function Home() {

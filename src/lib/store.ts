@@ -18,6 +18,7 @@ export type ViewType =
   | 'settings'
   | 'media'
   | 'audit-logs'
+  | 'withdrawals'
 
 interface AdminUser {
   id: string

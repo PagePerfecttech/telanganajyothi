@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       }
 
       // 3. Decode payload
-      const decodedPayload = safeJsonParse(Buffer.from(payload, 'base64').toString('utf8'), {})
+      const decodedPayload = safeJsonParse<Record<string, any>>(Buffer.from(payload, 'base64').toString('utf8'), {})
       const rawPhone = decodedPayload.phoneNumber
 
       if (!rawPhone) {
