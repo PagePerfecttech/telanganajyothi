@@ -92,6 +92,13 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Dashboard error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json(
+      { 
+        error: 'Internal server error', 
+        details: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      }, 
+      { status: 500 }
+    )
   }
 }
