@@ -55,7 +55,7 @@ export async function PATCH(
 
     await logAudit({
       adminId: admin.id,
-      action: `withdrawal_${status}`,
+      action: 'status_change',
       entity: 'withdrawal',
       entityId: id,
       ipAddress: getClientIp(request),
