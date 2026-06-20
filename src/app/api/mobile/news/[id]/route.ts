@@ -16,6 +16,12 @@ export async function GET(
         district: { select: { name: true } },
         reporter: { select: { name: true, avatar: true } },
         tags: { include: { tag: { select: { name: true, slug: true } } } },
+        _count: {
+          select: {
+            comments: { where: { deletedAt: null } },
+            reactions: true,
+          }
+        }
       },
     })
 

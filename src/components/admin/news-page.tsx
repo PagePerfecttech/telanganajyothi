@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useAppStore } from '@/lib/store'
+import ReactCrop, { Crop, PixelCrop } from 'react-image-crop'
+import 'react-image-crop/dist/ReactCrop.css'
 import { authFetch, authFetchJSON, authFetchJson } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -427,6 +429,14 @@ function NewsFormPage({
   const [saving, setSaving] = useState(false)
   const [pageLoading, setPageLoading] = useState(!!editItemId)
 
+  // Crop state
+  const [cropModalOpen, setCropModalOpen] = useState(false)
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null)
+  const [crop, setCrop] = useState<Crop>({ unit: '%', width: 50, height: 50, x: 25, y: 25 })
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop | null>(null)
+  const [uploadTarget, setUploadTarget] = useState<'thumbnail' | 'image'>('thumbnail')
+  const imgRef = useRef<HTMLImageElement>(null)
+
   // Load edit data
   useEffect(() => {
     if (editItemId && !loaded) {
@@ -492,48 +502,94 @@ function NewsFormPage({
     }
   }
 
-  const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploadingThumbnail(true)
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const res = await authFetch('/api/admin/media/upload', { method: 'POST', body: formData })
-      const data = await res.json()
-      if (data.url) {
-        updateField('thumbnailUrl', data.url)
-        toast.success('Thumbnail uploaded')
-      }
-    } catch {
-      toast.error('Upload failed')
-    } finally {
-      setUploadingThumbnail(false)
+  const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const reader = new FileReader()
+      reader.addEventListener('load', () => {
+        setImageToCrop(reader.result?.toString() || null)
+        setUploadTarget('thumbnail')
+        setCropModalOpen(true)
+      })
+      reader.readAsDataURL(e.target.files[0])
     }
   }
 
-  const handleImagesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
-    setUploadingImages(true)
-    const currentImages = (form.imagesUrls as string[]) || []
-    try {
-      for (const file of Array.from(files)) {
-        if (currentImages.length >= 8) break
-        const formData = new FormData()
-        formData.append('file', file)
-        const res = await authFetch('/api/admin/media/upload', { method: 'POST', body: formData })
-        const data = await res.json()
-        if (data.url) {
-          currentImages.push(data.url)
-        }
+  const handleImagesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const currentImages = (form.imagesUrls as string[]) || []
+      if (currentImages.length >= 8) {
+        toast.error('Maximum 8 images allowed')
+        return
       }
-      updateField('imagesUrls', [...currentImages])
-      toast.success('Images uploaded')
+      const reader = new FileReader()
+      reader.addEventListener('load', () => {
+        setImageToCrop(reader.result?.toString() || null)
+        setUploadTarget('image')
+        setCropModalOpen(true)
+      })
+      reader.readAsDataURL(e.target.files[0])
+    }
+  }
+
+  const getCroppedImg = async (): Promise<Blob | null> => {
+    const image = imgRef.current
+    if (!image || !completedCrop) return null
+
+    const canvas = document.createElement('canvas')
+    const scaleX = image.naturalWidth / image.width
+    const scaleY = image.naturalHeight / image.height
+    canvas.width = completedCrop.width
+    canvas.height = completedCrop.height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+
+    ctx.drawImage(
+      image,
+      completedCrop.x * scaleX,
+      completedCrop.y * scaleY,
+      completedCrop.width * scaleX,
+      completedCrop.height * scaleY,
+      0,
+      0,
+      completedCrop.width,
+      completedCrop.height
+    )
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.9)
+    })
+  }
+
+  const uploadCroppedImage = async () => {
+    const croppedBlob = await getCroppedImg()
+    if (!croppedBlob) {
+      toast.error('Failed to crop image')
+      return
+    }
+
+    if (uploadTarget === 'thumbnail') setUploadingThumbnail(true)
+    else setUploadingImages(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', croppedBlob, 'cropped.jpg')
+      const res = await authFetch('/api/admin/media/upload', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (data.url) {
+        if (uploadTarget === 'thumbnail') {
+          updateField('thumbnailUrl', data.url)
+        } else {
+          const currentImages = (form.imagesUrls as string[]) || []
+          updateField('imagesUrls', [...currentImages, data.url])
+        }
+        toast.success('Image uploaded successfully')
+        setCropModalOpen(false)
+      }
     } catch {
       toast.error('Upload failed')
     } finally {
-      setUploadingImages(false)
+      if (uploadTarget === 'thumbnail') setUploadingThumbnail(false)
+      else setUploadingImages(false)
     }
   }
 
@@ -888,6 +944,33 @@ function NewsFormPage({
           </div>
         </div>
       </div>
+
+      <Dialog open={cropModalOpen} onOpenChange={setCropModalOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Crop Image</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center max-h-[60vh] overflow-auto">
+            {imageToCrop && (
+              <ReactCrop
+                crop={crop}
+                onChange={(_, percentCrop) => setCrop(percentCrop)}
+                onComplete={(c) => setCompletedCrop(c)}
+                aspect={uploadTarget === 'thumbnail' ? 16 / 9 : undefined}
+              >
+                <img ref={imgRef} src={imageToCrop} alt="Crop" style={{ maxHeight: '50vh' }} />
+              </ReactCrop>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCropModalOpen(false)}>Cancel</Button>
+            <Button onClick={uploadCroppedImage} disabled={uploadingThumbnail || uploadingImages}>
+              {(uploadingThumbnail || uploadingImages) ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+              Crop & Upload
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -76,8 +76,16 @@ export async function GET(request: NextRequest) {
           priority: true,
           publishedAt: true,
           viewsCount: true,
+          sharesCount: true,
           category: { select: { name: true, slug: true, color: true } },
           district: { select: { name: true } },
+          reporter: { select: { name: true, avatar: true } },
+          _count: {
+            select: {
+              comments: { where: { deletedAt: null } },
+              reactions: true,
+            }
+          }
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
