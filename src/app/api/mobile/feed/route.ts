@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
           reporter: { select: { name: true, avatar: true } },
           _count: {
             select: {
-              comments: { where: { deletedAt: null } },
+              comments: { where: { isActive: true } },
               reactions: true,
             }
           }
