@@ -7,6 +7,7 @@ import { safeJsonParse } from '@/lib/json-utils'
 const feedQuerySchema = z.object({
   district_id: z.string().cuid().optional(),
   category_id: z.string().cuid().optional(),
+  categories: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(10),
 })
@@ -17,6 +18,7 @@ export async function GET(request: NextRequest) {
   const parsed = feedQuerySchema.safeParse({
     district_id: searchParams.get('district_id') ?? undefined,
     category_id: searchParams.get('category_id') ?? undefined,
+    categories: searchParams.get('categories') ?? undefined,
     page: searchParams.get('page') ?? undefined,
     limit: searchParams.get('limit') ?? undefined,
   })
@@ -28,7 +30,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const { district_id: districtId, category_id: categoryId, page, limit } = parsed.data
+  const { district_id: districtId, category_id: categoryId, categories, page, limit } = parsed.data
 
   try {
     let dbUser: any = null;
@@ -58,8 +60,12 @@ export async function GET(request: NextRequest) {
       where.districtId = finalDistrictId;
     }
     
+    const requestCats = categories ? categories.split(',').filter(Boolean) : [];
+
     if (categoryId) {
       where.categoryId = categoryId;
+    } else if (requestCats.length > 0) {
+      where.categoryId = { in: requestCats };
     } else if (preferredCats.length > 0) {
       where.categoryId = { in: preferredCats };
     }

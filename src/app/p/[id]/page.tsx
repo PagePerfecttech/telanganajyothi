@@ -40,14 +40,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     openGraph: {
       title: news.title,
       description: news.shortDesc || '',
-      images: finalImageUrl ? [
-        {
-          url: finalImageUrl,
-          width: 1200,
-          height: 630,
-          alt: news.title,
-        }
-      ] : [],
       type: 'article',
       siteName: 'Spot News',
     },
@@ -55,7 +47,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: 'summary_large_image',
       title: news.title,
       description: news.shortDesc || '',
-      images: finalImageUrl ? [finalImageUrl] : [],
     }
   }
 }

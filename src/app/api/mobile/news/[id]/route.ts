@@ -18,7 +18,7 @@ export async function GET(
         tags: { include: { tag: { select: { name: true, slug: true } } } },
         _count: {
           select: {
-            comments: { where: { deletedAt: null } },
+            comments: { where: { isActive: true } },
             reactions: true,
           }
         }
