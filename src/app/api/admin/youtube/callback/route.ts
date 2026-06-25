@@ -19,8 +19,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/admin/settings?youtube_error=no_code', request.url))
     }
 
-    const clientId = process.env.GOOGLE_CLIENT_ID
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET
+    const clientId = process.env.YOUTUBE_CLIENT_ID
+    const clientSecret = process.env.YOUTUBE_CLIENT_SECRET
     const redirectUri = process.env.NEXT_PUBLIC_APP_URL 
       ? `${process.env.NEXT_PUBLIC_APP_URL}/api/admin/youtube/callback`
       : 'http://localhost:3000/api/admin/youtube/callback'
