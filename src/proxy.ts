@@ -13,7 +13,8 @@ export async function proxy(request: NextRequest) {
     pathname === '/api' ||
     pathname === '/api/' ||
     pathname.startsWith('/api/mobile/') ||
-    pathname === '/api/admin/auth/login'
+    pathname === '/api/admin/auth/login' ||
+    pathname.startsWith('/api/admin/youtube/callback')
   ) {
     return NextResponse.next()
   }
