@@ -124,12 +124,12 @@ export async function POST(request: NextRequest) {
     })
 
     // Send push notification if published
-    if (news.status === 'published' && news.districtId) {
+    if (news.status === 'published') {
       try {
         await messaging.send({
-          topic: `district_${news.districtId}`,
+          topic: news.districtId ? `district_${news.districtId}` : 'all',
           notification: {
-            title: 'New Update in Your District',
+            title: news.districtId ? 'New Update in Your District' : 'Breaking News',
             body: news.title,
             imageUrl: news.thumbnailUrl || undefined,
           },

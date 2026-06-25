@@ -4,6 +4,7 @@ import { verifyAuth } from '@/lib/auth'
 import { safeJsonParse, safeJsonStringify } from '@/lib/json-utils'
 import { processNewsApprovalEarning } from '@/lib/wallet-service'
 import { uploadToYouTubeShorts } from '@/lib/youtube-service'
+import { messaging } from '@/lib/firebase-admin'
 
 export async function GET(
   request: NextRequest,
@@ -51,6 +52,10 @@ export async function PUT(
     const { id } = await params
     const data = await request.json()
 
+    const existingNews = await db.news.findUnique({ where: { id }, select: { status: true } })
+    if (!existingNews) return NextResponse.json({ error: 'News not found' }, { status: 404 })
+    const wasPublished = existingNews.status === 'published'
+
     const updateData: Record<string, unknown> = {}
     if (data.title !== undefined) updateData.title = data.title
     if (data.shortDesc !== undefined) updateData.shortDesc = data.shortDesc || null
@@ -66,7 +71,7 @@ export async function PUT(
     if (data.priority !== undefined) updateData.priority = data.priority
     if (data.status !== undefined) {
       updateData.status = data.status
-      if (data.status === 'published') updateData.publishedAt = new Date()
+      if (data.status === 'published' && !wasPublished) updateData.publishedAt = new Date()
     }
     if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured
     if (data.expiresAt !== undefined) updateData.expiresAt = data.expiresAt ? new Date(data.expiresAt) : null
@@ -102,13 +107,43 @@ export async function PUT(
     })
 
     // Process Earning & YouTube if newly published
-    if (data.status === 'published') {
+    if (data.status === 'published' && !wasPublished) {
       const isVideo = !!(news.videoUrl)
       await processNewsApprovalEarning(id, isVideo)
       
       if (isVideo && news.videoUrl) {
         // Run youtube upload asynchronously
         uploadToYouTubeShorts(id, news.title, news.shortDesc || '', news.videoUrl, true)
+      }
+
+      // Send push notification
+      try {
+        await messaging.send({
+          topic: news.districtId ? `district_${news.districtId}` : 'all',
+          notification: {
+            title: news.districtId ? 'New Update in Your District' : 'Breaking News',
+            body: news.title,
+            imageUrl: news.thumbnailUrl || undefined,
+          },
+          data: {
+            route: `/feed?newsId=${news.id}`,
+            newsId: news.id,
+          },
+          android: {
+            notification: {
+              sound: 'default',
+            }
+          },
+          apns: {
+            payload: {
+              aps: {
+                sound: 'default',
+              }
+            }
+          }
+        })
+      } catch (fcmError) {
+        console.error('Failed to send FCM notification:', fcmError)
       }
     }
 
@@ -130,8 +165,12 @@ export async function PATCH(
     const { id } = await params
     const data = await request.json()
 
+    const existingNews = await db.news.findUnique({ where: { id }, select: { status: true } })
+    if (!existingNews) return NextResponse.json({ error: 'News not found' }, { status: 404 })
+    const wasPublished = existingNews.status === 'published'
+
     const updateData: Record<string, unknown> = { status: data.status }
-    if (data.status === 'published') {
+    if (data.status === 'published' && !wasPublished) {
       updateData.publishedAt = new Date()
     }
     if (data.status === 'rejected') {
@@ -153,12 +192,42 @@ export async function PATCH(
       },
     })
 
-    if (data.status === 'published') {
+    if (data.status === 'published' && !wasPublished) {
       const isVideo = !!(news.videoUrl)
       await processNewsApprovalEarning(id, isVideo)
       
       if (isVideo && news.videoUrl) {
         uploadToYouTubeShorts(id, news.title, news.shortDesc || '', news.videoUrl, true)
+      }
+
+      // Send push notification
+      try {
+        await messaging.send({
+          topic: news.districtId ? `district_${news.districtId}` : 'all',
+          notification: {
+            title: news.districtId ? 'New Update in Your District' : 'Breaking News',
+            body: news.title,
+            imageUrl: news.thumbnailUrl || undefined,
+          },
+          data: {
+            route: `/feed?newsId=${news.id}`,
+            newsId: news.id,
+          },
+          android: {
+            notification: {
+              sound: 'default',
+            }
+          },
+          apns: {
+            payload: {
+              aps: {
+                sound: 'default',
+              }
+            }
+          }
+        })
+      } catch (fcmError) {
+        console.error('Failed to send FCM notification:', fcmError)
       }
     }
 

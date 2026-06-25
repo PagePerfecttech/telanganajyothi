@@ -543,12 +543,17 @@ function NewsFormPage({
     const destWidth = completedCrop.width * scaleX
     const destHeight = completedCrop.height * scaleY
     
-    canvas.width = destWidth
-    canvas.height = destHeight
+    // Upscale if the crop is too small to prevent blurriness on mobile devices
+    const pixelRatio = destWidth < 800 ? 800 / destWidth : 1
+    
+    canvas.width = Math.floor(destWidth * pixelRatio)
+    canvas.height = Math.floor(destHeight * pixelRatio)
     
     const ctx = canvas.getContext('2d')
     if (!ctx) return null
 
+    ctx.scale(pixelRatio, pixelRatio)
+    ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
 
     ctx.drawImage(
@@ -564,7 +569,7 @@ function NewsFormPage({
     )
 
     return new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.95)
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 1.0)
     })
   }
 
