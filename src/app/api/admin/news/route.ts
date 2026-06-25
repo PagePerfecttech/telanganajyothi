@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyAuth } from '@/lib/auth'
 import { safeJsonParse, safeJsonStringify } from '@/lib/json-utils'
+import { messaging } from '@/lib/firebase-admin'
 
 export async function GET(request: NextRequest) {
   try {
@@ -121,6 +122,38 @@ export async function POST(request: NextRequest) {
         changes: JSON.stringify({ title: data.title }),
       },
     })
+
+    // Send push notification if published
+    if (news.status === 'published' && news.districtId) {
+      try {
+        await messaging.send({
+          topic: `district_${news.districtId}`,
+          notification: {
+            title: 'New Update in Your District',
+            body: news.title,
+            imageUrl: news.thumbnailUrl || undefined,
+          },
+          data: {
+            route: `/feed?newsId=${news.id}`,
+            newsId: news.id,
+          },
+          android: {
+            notification: {
+              sound: 'default',
+            }
+          },
+          apns: {
+            payload: {
+              aps: {
+                sound: 'default',
+              }
+            }
+          }
+        })
+      } catch (fcmError) {
+        console.error('Failed to send FCM notification:', fcmError)
+      }
+    }
 
     return NextResponse.json({ ...news, imagesUrls: safeJsonParse<string[]>(news.imagesUrls || '[]', []) }, { status: 201 })
   } catch (error) {

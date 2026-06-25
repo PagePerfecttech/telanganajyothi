@@ -538,10 +538,18 @@ function NewsFormPage({
     const canvas = document.createElement('canvas')
     const scaleX = image.naturalWidth / image.width
     const scaleY = image.naturalHeight / image.height
-    canvas.width = completedCrop.width
-    canvas.height = completedCrop.height
+    
+    // Set canvas dimensions to the actual high-resolution cropped size
+    const destWidth = completedCrop.width * scaleX
+    const destHeight = completedCrop.height * scaleY
+    
+    canvas.width = destWidth
+    canvas.height = destHeight
+    
     const ctx = canvas.getContext('2d')
     if (!ctx) return null
+
+    ctx.imageSmoothingQuality = 'high'
 
     ctx.drawImage(
       image,
@@ -551,12 +559,12 @@ function NewsFormPage({
       completedCrop.height * scaleY,
       0,
       0,
-      completedCrop.width,
-      completedCrop.height
+      destWidth,
+      destHeight
     )
 
     return new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.9)
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.95)
     })
   }
 
