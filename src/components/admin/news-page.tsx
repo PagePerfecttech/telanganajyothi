@@ -421,7 +421,7 @@ function NewsFormPage({
   const [form, setForm] = useState<Record<string, unknown>>({
     title: '', shortDesc: '', content: '', categoryId: '', stateId: '', districtId: '',
     thumbnailUrl: '', imagesUrls: [] as string[], videoUrl: '', sourceType: 'original', reporterId: '',
-    priority: 'normal', status: 'draft', isFeatured: false, tagIds: [] as string[],
+    priority: 'normal', status: 'draft', isFeatured: false, sendNotification: true, tagIds: [] as string[],
   })
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false)
   const [uploadingImages, setUploadingImages] = useState(false)
@@ -467,6 +467,7 @@ function NewsFormPage({
             priority: data.priority || 'normal',
             status: data.status || 'draft',
             isFeatured: data.isFeatured || false,
+            sendNotification: data.sendNotification !== false,
             tagIds,
           })
           setLoaded(true)
@@ -883,6 +884,12 @@ function NewsFormPage({
               <div className="flex items-center gap-3 pt-2">
                 <Switch checked={form.isFeatured as boolean} onCheckedChange={(v) => updateField('isFeatured', v)} />
                 <Label>Featured / Breaking</Label>
+              </div>
+
+              {/* Notification toggle */}
+              <div className="flex items-center gap-3 pt-2">
+                <Switch checked={form.sendNotification as boolean} onCheckedChange={(v) => updateField('sendNotification', v)} />
+                <Label>Send Push Notification (if published)</Label>
               </div>
             </CardContent>
           </Card>

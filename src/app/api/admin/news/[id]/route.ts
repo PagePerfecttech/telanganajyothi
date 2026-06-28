@@ -116,34 +116,36 @@ export async function PUT(
         uploadToYouTubeShorts(id, news.title, news.shortDesc || '', news.videoUrl, true)
       }
 
-      // Send push notification
-      try {
-        await messaging.send({
-          topic: news.districtId ? `district_${news.districtId}` : 'all',
-          notification: {
-            title: news.districtId ? 'New Update in Your District' : 'Breaking News',
-            body: news.title,
-            imageUrl: news.thumbnailUrl || undefined,
-          },
-          data: {
-            route: `/feed?newsId=${news.id}`,
-            newsId: news.id,
-          },
-          android: {
+      // Send push notification if requested
+      if (data.sendNotification !== false) {
+        try {
+          await messaging.send({
+            topic: news.districtId ? `district_${news.districtId}` : 'all',
             notification: {
-              sound: 'default',
-            }
-          },
-          apns: {
-            payload: {
-              aps: {
+              title: news.districtId ? 'New Update in Your District' : 'Breaking News',
+              body: news.title,
+              imageUrl: news.thumbnailUrl || undefined,
+            },
+            data: {
+              route: `/feed?newsId=${news.id}`,
+              newsId: news.id,
+            },
+            android: {
+              notification: {
                 sound: 'default',
               }
+            },
+            apns: {
+              payload: {
+                aps: {
+                  sound: 'default',
+                }
+              }
             }
-          }
-        })
-      } catch (fcmError) {
-        console.error('Failed to send FCM notification:', fcmError)
+          })
+        } catch (fcmError) {
+          console.error('Failed to send FCM notification:', fcmError)
+        }
       }
     }
 
@@ -200,34 +202,36 @@ export async function PATCH(
         uploadToYouTubeShorts(id, news.title, news.shortDesc || '', news.videoUrl, true)
       }
 
-      // Send push notification
-      try {
-        await messaging.send({
-          topic: news.districtId ? `district_${news.districtId}` : 'all',
-          notification: {
-            title: news.districtId ? 'New Update in Your District' : 'Breaking News',
-            body: news.title,
-            imageUrl: news.thumbnailUrl || undefined,
-          },
-          data: {
-            route: `/feed?newsId=${news.id}`,
-            newsId: news.id,
-          },
-          android: {
+      // Send push notification if requested
+      if (data.sendNotification !== false) {
+        try {
+          await messaging.send({
+            topic: news.districtId ? `district_${news.districtId}` : 'all',
             notification: {
-              sound: 'default',
-            }
-          },
-          apns: {
-            payload: {
-              aps: {
+              title: news.districtId ? 'New Update in Your District' : 'Breaking News',
+              body: news.title,
+              imageUrl: news.thumbnailUrl || undefined,
+            },
+            data: {
+              route: `/feed?newsId=${news.id}`,
+              newsId: news.id,
+            },
+            android: {
+              notification: {
                 sound: 'default',
               }
+            },
+            apns: {
+              payload: {
+                aps: {
+                  sound: 'default',
+                }
+              }
             }
-          }
-        })
-      } catch (fcmError) {
-        console.error('Failed to send FCM notification:', fcmError)
+          })
+        } catch (fcmError) {
+          console.error('Failed to send FCM notification:', fcmError)
+        }
       }
     }
 

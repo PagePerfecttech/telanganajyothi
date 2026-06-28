@@ -123,8 +123,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Send push notification if published
-    if (news.status === 'published') {
+    // Send push notification if published and requested
+    if (news.status === 'published' && data.sendNotification !== false) {
       try {
         await messaging.send({
           topic: news.districtId ? `district_${news.districtId}` : 'all',
