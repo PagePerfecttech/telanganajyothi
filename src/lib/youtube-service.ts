@@ -5,6 +5,8 @@ import path from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import https from 'https'
 
+import http from 'http'
+
 const OAUTH2_CLIENT_ID = process.env.YOUTUBE_CLIENT_ID || 'dummy'
 const OAUTH2_CLIENT_SECRET = process.env.YOUTUBE_CLIENT_SECRET || 'dummy'
 const OAUTH2_REDIRECT_URI = process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/api/admin/youtube/callback` : 'http://localhost:3000/api/admin/youtube/callback'
@@ -86,7 +88,7 @@ async function updateStatus(id: string, isNews: boolean, status: string, youtube
 function downloadFile(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const isHttps = url.startsWith('https')
-    const httpModule = isHttps ? https : require('http')
+    const httpModule = isHttps ? https : http
     
     // If it's a local file upload URL, it might just be relative path. 
     // Wait, the videoUrl in DB is probably absolute but if it's relative, we need to construct it.

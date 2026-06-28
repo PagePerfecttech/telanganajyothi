@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
@@ -621,6 +622,9 @@ function NewsFormPage({
     }
   }
 
+  const [showNotificationDialog, setShowNotificationDialog] = useState(false)
+  const [pendingFormSubmit, setPendingFormSubmit] = useState(false)
+
   const handleSubmit = async () => {
     if (!form.title) {
       toast.error('Title is required')
@@ -634,9 +638,20 @@ function NewsFormPage({
       toast.error('State is required')
       return
     }
+
+    if (form.status === 'published' && form.sendNotification !== false && !pendingFormSubmit) {
+      setShowNotificationDialog(true)
+      return
+    }
+
+    await executeSubmit()
+  }
+
+  const executeSubmit = async () => {
     setSaving(true)
     try {
       await onSave(form)
+      setPendingFormSubmit(false)
     } finally {
       setSaving(false)
     }
@@ -991,6 +1006,34 @@ function NewsFormPage({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showNotificationDialog} onOpenChange={setShowNotificationDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send Push Notification?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Do you want to send a push notification to users about this news?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              updateField('sendNotification', false)
+              setShowNotificationDialog(false)
+              setPendingFormSubmit(true)
+              setTimeout(() => executeSubmit(), 0)
+            }}>
+              No, don't send
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowNotificationDialog(false)
+              setPendingFormSubmit(true)
+              setTimeout(() => executeSubmit(), 0)
+            }} className="bg-red-600 hover:bg-red-700">
+              Yes, send notification
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

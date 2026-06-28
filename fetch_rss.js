@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const https = require('https');
 
 https.get('https://www.teluguone.com/news/rss/latestnews/latestnews-25.rss', (res) => {
