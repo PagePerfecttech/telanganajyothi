@@ -25,8 +25,25 @@ export async function POST(request: NextRequest) {
         }
       });
     }
-    
-    return NextResponse.json({ success: true, user });
+    // Check if user is an admin
+    const email = decodedToken.email || null;
+    let isAdmin = false;
+    if (email) {
+      const admin = await db.admin.findUnique({ where: { email } });
+      if (admin && admin.isActive && !admin.deletedAt) {
+        isAdmin = true;
+      }
+    }
+
+    // Check if user is a reporter
+    const reporter = await db.reporter.findUnique({ where: { phone } });
+    const isReporter = reporter && reporter.status === 'active' && !reporter.deletedAt;
+
+    let role = 'user';
+    if (isAdmin) role = 'admin';
+    else if (isReporter) role = 'reporter';
+
+    return NextResponse.json({ success: true, user: { ...user, role } });
   } catch (error: any) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
