@@ -38,7 +38,7 @@ interface AdItem {
 
 const defaultForm = {
   title: '', advertiser: '', type: 'poster', placement: 'feed_inline',
-  layout: 'grid', imagesUrls: [] as string[], videoUrl: '', clickUrl: '',
+  layout: 'grid', imagesUrls: [] as string[], videoUrl: '', clickUrl: '', buttonText: '',
   frequency: 5, impressionsLimit: 0, startDate: '', endDate: '', isActive: true,
   targetStateIds: [] as string[], targetCategoryIds: [] as string[],
 }
@@ -487,9 +487,16 @@ function AdFormPage({
               )}
 
               {/* Click URL */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">Click URL (Landing Page)</Label>
-                <Input value={form.clickUrl as string} onChange={e => setForm(p => ({ ...p, clickUrl: e.target.value }))} placeholder="https://example.com/landing" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Click URL (Landing Page)</Label>
+                  <Input value={form.clickUrl as string} onChange={e => setForm(p => ({ ...p, clickUrl: e.target.value }))} placeholder="https://example.com/landing" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Button Text</Label>
+                  <Input value={form.buttonText as string || ''} onChange={e => setForm(p => ({ ...p, buttonText: e.target.value }))} placeholder="e.g. Learn More, Buy Now" />
+                  <p className="text-[10px] text-muted-foreground">Only shown if Click URL is provided. Defaults to "Learn More"</p>
+                </div>
               </div>
             </CardContent>
           </Card>

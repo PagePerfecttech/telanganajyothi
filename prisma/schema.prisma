@@ -223,6 +223,7 @@ model CustomAd {
   layout            String    @default("grid")
   videoUrl          String?   @map("video_url")
   clickUrl          String?   @map("click_url")
+  buttonText        String?   @map("button_text")
   placement         String    @default("feed_inline")
   frequency         Int       @default(5) @map("frequency")
   targetStateIds    String    @default("[]") @map("target_state_ids")

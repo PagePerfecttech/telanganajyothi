@@ -50,55 +50,109 @@ export async function GET(request: NextRequest) {
     const finalDistrictId = districtId || dbUser?.districtId || undefined;
     const preferredCats = safeJsonParse<string[]>(dbUser?.preferredCategories, []);
     
-    const where: Record<string, unknown> = {
+    const baseWhere: Record<string, unknown> = {
       status: 'published',
       deletedAt: null,
       publishedAt: { lte: new Date() },
     }
     
+    const filterConditions: Record<string, unknown> = {};
     if (finalDistrictId) {
-      where.districtId = finalDistrictId;
+      filterConditions.districtId = finalDistrictId;
     }
     
     const requestCats = categories ? categories.split(',').filter(Boolean) : [];
-
     if (categoryId) {
-      where.categoryId = categoryId;
+      filterConditions.categoryId = categoryId;
     } else if (requestCats.length > 0) {
-      where.categoryId = { in: requestCats };
+      filterConditions.categoryId = { in: requestCats };
     } else if (preferredCats.length > 0) {
-      where.categoryId = { in: preferredCats };
+      filterConditions.categoryId = { in: preferredCats };
     }
 
-    const [news, total] = await Promise.all([
-      db.news.findMany({
-        where,
-        select: {
-          id: true,
-          title: true,
-          shortDesc: true,
-          thumbnailUrl: true,
-          imagesUrls: true,
-          priority: true,
-          publishedAt: true,
-          viewsCount: true,
-          sharesCount: true,
-          category: { select: { name: true, slug: true, color: true } },
-          district: { select: { name: true } },
-          reporter: { select: { name: true, avatar: true } },
-          _count: {
-            select: {
-              comments: { where: { isActive: true } },
-              reactions: true,
-            }
+    const hasFilters = Object.keys(filterConditions).length > 0;
+    
+    const selectAndOrder = {
+      select: {
+        id: true,
+        title: true,
+        shortDesc: true,
+        thumbnailUrl: true,
+        imagesUrls: true,
+        priority: true,
+        publishedAt: true,
+        viewsCount: true,
+        sharesCount: true,
+        category: { select: { name: true, slug: true, color: true } },
+        district: { select: { name: true } },
+        reporter: { select: { name: true, avatar: true } },
+        _count: {
+          select: {
+            comments: { where: { isActive: true } },
+            reactions: true,
           }
-        },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      db.news.count({ where }),
-    ])
+        }
+      },
+      orderBy: { createdAt: 'desc' as const },
+    };
+
+    let news: any[] = [];
+    let total = 0;
+    const offset = (page - 1) * limit;
+
+    if (hasFilters) {
+      const filteredWhere = { ...baseWhere, ...filterConditions };
+      const unfilteredWhere = { ...baseWhere, NOT: filterConditions };
+
+      const [totalFiltered, totalUnfiltered] = await Promise.all([
+        db.news.count({ where: filteredWhere }),
+        db.news.count({ where: unfilteredWhere }),
+      ]);
+      total = totalFiltered + totalUnfiltered;
+
+      if (offset < totalFiltered) {
+        const takeFiltered = Math.min(limit, totalFiltered - offset);
+        const filteredNews = await db.news.findMany({
+          where: filteredWhere,
+          ...selectAndOrder,
+          skip: offset,
+          take: takeFiltered,
+        });
+        news.push(...filteredNews);
+
+        if (takeFiltered < limit) {
+          const takeUnfiltered = limit - takeFiltered;
+          const unfilteredNews = await db.news.findMany({
+            where: unfilteredWhere,
+            ...selectAndOrder,
+            skip: 0,
+            take: takeUnfiltered,
+          });
+          news.push(...unfilteredNews);
+        }
+      } else {
+        const skipUnfiltered = offset - totalFiltered;
+        const unfilteredNews = await db.news.findMany({
+          where: unfilteredWhere,
+          ...selectAndOrder,
+          skip: skipUnfiltered,
+          take: limit,
+        });
+        news.push(...unfilteredNews);
+      }
+    } else {
+      const [allNews, allTotal] = await Promise.all([
+        db.news.findMany({
+          where: baseWhere,
+          ...selectAndOrder,
+          skip: offset,
+          take: limit,
+        }),
+        db.news.count({ where: baseWhere }),
+      ]);
+      news = allNews;
+      total = allTotal;
+    }
 
     // Get feed_inline ads with their frequency setting
     const ads = await db.customAd.findMany({

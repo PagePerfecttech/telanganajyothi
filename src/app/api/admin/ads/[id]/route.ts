@@ -48,6 +48,7 @@ export async function PUT(
       layout: data.layout || 'grid',
       videoUrl: data.videoUrl || null,
       clickUrl: data.clickUrl || null,
+      buttonText: data.buttonText || null,
       placement: data.placement,
       frequency: data.frequency || 5,
       targetStateIds: safeJsonStringify(data.targetStateIds || []),

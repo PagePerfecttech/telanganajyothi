@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
         layout: data.layout || 'grid',
         videoUrl: data.videoUrl || null,
         clickUrl: data.clickUrl || null,
+        buttonText: data.buttonText || null,
         placement: data.placement || 'feed_inline',
         frequency: data.frequency || 5,
         targetStateIds: safeJsonStringify(data.targetStateIds || []),
