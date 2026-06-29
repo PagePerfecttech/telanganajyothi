@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const images: string[] = safeJsonParse<string[]>(news.imagesUrls, [])
   const imageUrl = news.thumbnailUrl || (images.length > 0 ? images[0] : null)
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://spotnews.in' // Replace with your actual domain
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://m.telanganajyothi.in' // Replace with your actual domain
   let finalImageUrl = imageUrl
   if (imageUrl && imageUrl.startsWith('/')) {
     finalImageUrl = `${baseUrl}${imageUrl}`
@@ -41,12 +41,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: news.title,
       description: news.shortDesc || '',
       type: 'article',
-      siteName: 'Spot News',
+      siteName: 'Telangana Jyothi',
+      ...(finalImageUrl ? { images: [finalImageUrl] } : {})
     },
     twitter: {
       card: 'summary_large_image',
       title: news.title,
       description: news.shortDesc || '',
+      ...(finalImageUrl ? { images: [finalImageUrl] } : {})
     }
   }
 }
