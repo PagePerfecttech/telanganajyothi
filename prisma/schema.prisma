@@ -32,11 +32,28 @@ model District {
   updatedAt DateTime   @updatedAt @map("updated_at")
   deletedAt DateTime?  @map("deleted_at")
   state     State      @relation(fields: [stateId], references: [id])
+  mandals   Mandal[]
   news      News[]
   reporters Reporter[]
   users     User[]
 
   @@map("districts")
+}
+
+model Mandal {
+  id         String     @id @default(cuid())
+  name       String
+  districtId String     @map("district_id")
+  isActive   Boolean    @default(true) @map("is_active")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+  deletedAt  DateTime?  @map("deleted_at")
+  district   District   @relation(fields: [districtId], references: [id])
+  news       News[]
+  reporters  Reporter[]
+  users      User[]
+
+  @@map("mandals")
 }
 
 model Category {
@@ -108,6 +125,7 @@ model Reporter {
   bio                String?
   stateId            String    @map("state_id")
   districtId         String    @map("district_id")
+  mandalId           String?   @map("mandal_id")
   beat               String?
   status             String    @default("pending")
   canPublishDirectly Boolean   @default(false) @map("can_publish_directly")
@@ -120,6 +138,7 @@ model Reporter {
   walletTransactions WalletTransaction[]
   withdrawalRequests WithdrawalRequest[]
   district           District  @relation(fields: [districtId], references: [id])
+  mandal             Mandal?   @relation(fields: [mandalId], references: [id])
   state              State     @relation(fields: [stateId], references: [id])
 
   @@map("reporters")
@@ -133,6 +152,7 @@ model User {
   avatar              String?
   stateId             String?         @map("state_id")
   districtId          String?         @map("district_id")
+  mandalId            String?         @map("mandal_id")
   preferredLanguage   String          @default("te") @map("preferred_language")
   fcmToken            String?         @map("fcm_token")
   isActive            Boolean         @default(true) @map("is_active")
@@ -145,6 +165,7 @@ model User {
   comments            Comment[]
   newsReactions       NewsReaction[]
   district            District?       @relation(fields: [districtId], references: [id])
+  mandal              Mandal?         @relation(fields: [mandalId], references: [id])
   state               State?          @relation(fields: [stateId], references: [id])
   videoReactions      VideoReaction[]
 
@@ -159,6 +180,7 @@ model News {
   categoryId   String         @map("category_id")
   stateId      String         @map("state_id")
   districtId   String?        @map("district_id")
+  mandalId     String?        @map("mandal_id")
   thumbnailUrl String         @map("thumbnail_url")
   imagesUrls   String         @default("[]") @map("images_urls")
   videoUrl     String?        @map("video_url")
@@ -181,6 +203,7 @@ model News {
   category     Category       @relation(fields: [categoryId], references: [id])
   admin        Admin          @relation(fields: [createdBy], references: [id])
   district     District?      @relation(fields: [districtId], references: [id])
+  mandal       Mandal?        @relation(fields: [mandalId], references: [id])
   reporter     Reporter?      @relation(fields: [reporterId], references: [id])
   state        State          @relation(fields: [stateId], references: [id])
   reactions            NewsReaction[]

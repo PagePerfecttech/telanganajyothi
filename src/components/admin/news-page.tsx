@@ -42,6 +42,7 @@ interface NewsItem {
 interface Category { id: string; name: string }
 interface State { id: string; name: string; code: string }
 interface District { id: string; name: string; stateId: string }
+interface Mandal { id: string; name: string; districtId: string }
 interface Reporter { id: string; name: string }
 interface Tag { id: string; name: string; slug: string; type: string }
 
@@ -72,6 +73,7 @@ export default function NewsPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [states, setStates] = useState<State[]>([])
   const [districts, setDistricts] = useState<District[]>([])
+  const [mandals, setMandals] = useState<Mandal[]>([])
   const [reporters, setReporters] = useState<Reporter[]>([])
   const [tags, setTags] = useState<Tag[]>([])
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
@@ -109,17 +111,19 @@ export default function NewsPage() {
   useEffect(() => {
     const loadDeps = async () => {
       try {
-        const [cats, stateList, dists, reps, tagList] = await Promise.all([
+        const [cats, stateList, dists, mands, reps, tagList] = await Promise.all([
           // skipLogout=true: loading dropdown deps shouldn't log user out on transient 401
           authFetchJson<Category[]>('/api/admin/categories', undefined, true),
           authFetchJson<State[]>('/api/admin/states', undefined, true),
           authFetchJson<District[]>('/api/admin/districts', undefined, true),
+          authFetchJson<Mandal[]>('/api/admin/mandals', undefined, true),
           authFetchJson<Reporter[]>('/api/admin/reporters', undefined, true),
           authFetchJson<Tag[]>('/api/admin/tags', undefined, true),
         ])
         setCategories(cats)
         setStates(stateList)
         setDistricts(dists)
+        setMandals(mands)
         setReporters(reps)
         setTags(tagList)
       } catch (err) {
@@ -226,6 +230,7 @@ export default function NewsPage() {
         categories={categories}
         states={states}
         districts={districts}
+        mandals={mandals}
         reporters={reporters}
         tags={tags}
       />
@@ -416,11 +421,12 @@ function NewsFormPage({
   categories: Category[]
   states: State[]
   districts: District[]
+  mandals: Mandal[]
   reporters: Reporter[]
   tags: Tag[]
 }) {
   const [form, setForm] = useState<Record<string, unknown>>({
-    title: '', shortDesc: '', content: '', categoryId: '', stateId: '', districtId: '',
+    title: '', shortDesc: '', content: '', categoryId: '', stateId: '', districtId: '', mandalId: '',
     thumbnailUrl: '', imagesUrls: [] as string[], videoUrl: '', sourceType: 'original', reporterId: '',
     priority: 'normal', status: 'draft', isFeatured: false, sendNotification: true, tagIds: [] as string[],
   })
@@ -460,6 +466,7 @@ function NewsFormPage({
             categoryId: data.categoryId || '',
             stateId: data.stateId || '',
             districtId: data.districtId || '',
+            mandalId: data.mandalId || '',
             thumbnailUrl: data.thumbnailUrl || '',
             imagesUrls: Array.isArray(data.imagesUrls) ? data.imagesUrls : [],
             videoUrl: data.videoUrl || '',
@@ -857,14 +864,33 @@ function NewsFormPage({
               {/* District */}
               <div className="space-y-2">
                 <Label>District</Label>
-                <Select value={(form.districtId as string) || 'none'} onValueChange={(v) => updateField('districtId', v === 'none' ? '' : v)}>
+                <Select value={(form.districtId as string) || 'none'} onValueChange={(v) => { updateField('districtId', v === 'none' ? '' : v); updateField('mandalId', '') }}>
                   <SelectTrigger><SelectValue placeholder="Select district" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Statewide</SelectItem>
-                    {(form.stateId
+                    <SelectItem value="none">No District</SelectItem>
+                    {(form.stateId && form.stateId !== 'none'
                       ? districts.filter(d => d.stateId === form.stateId)
                       : districts
-                    ).map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                    ).map(d => (
+                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Mandal Dropdown */}
+              <div className="space-y-2">
+                <Label>Mandal</Label>
+                <Select value={(form.mandalId as string) || 'none'} onValueChange={(v) => updateField('mandalId', v === 'none' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="Select mandal" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Mandal</SelectItem>
+                    {(form.districtId && form.districtId !== 'none'
+                      ? mandals.filter(m => m.districtId === form.districtId)
+                      : mandals
+                    ).map(m => (
+                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -22,17 +22,19 @@ interface ReporterItem {
   email: string | null
   avatar: string | null
   bio: string | null
-  stateId: string
   districtId: string
+  mandalId: string | null
   beat: string | null
   status: string
   canPublishDirectly: boolean
   state?: { name: string }
   district?: { name: string }
+  mandal?: { name: string }
   _count?: { news: number }
 }
 
 interface District { id: string; name: string }
+interface Mandal { id: string; name: string; districtId: string }
 
 const statusColors: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700',
@@ -43,12 +45,13 @@ const statusColors: Record<string, string> = {
 export default function ReportersPage() {
   const [reporters, setReporters] = useState<ReporterItem[]>([])
   const [districts, setDistricts] = useState<District[]>([])
+  const [mandals, setMandals] = useState<Mandal[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editItem, setEditItem] = useState<ReporterItem | null>(null)
   const [form, setForm] = useState<Record<string, unknown>>({
     name: '', phone: '', email: '', avatar: '', bio: '',
-    stateId: '', districtId: '', beat: '', status: 'pending', canPublishDirectly: false,
+    stateId: '', districtId: '', mandalId: '', beat: '', status: 'pending', canPublishDirectly: false,
   })
 
   const fetchReporters = useCallback(async () => {
@@ -63,6 +66,7 @@ export default function ReportersPage() {
   useEffect(() => {
     fetchReporters()
     authFetchJson<District[]>('/api/admin/districts').then(setDistricts).catch(() => toast.error('Failed to load districts'))
+    authFetchJson<Mandal[]>('/api/admin/mandals').then(setMandals).catch(() => toast.error('Failed to load mandals'))
   }, [fetchReporters])
 
   const handleSave = async () => {
@@ -99,7 +103,7 @@ export default function ReportersPage() {
     setEditItem(item)
     setForm({
       name: item.name, phone: item.phone, email: item.email || '', avatar: item.avatar || '',
-      bio: item.bio || '', stateId: item.stateId, districtId: item.districtId,
+      bio: item.bio || '', stateId: item.stateId, districtId: item.districtId, mandalId: item.mandalId || '',
       beat: item.beat || '', status: item.status, canPublishDirectly: item.canPublishDirectly,
     })
     setDialogOpen(true)
@@ -114,7 +118,7 @@ export default function ReportersPage() {
         </div>
         <Button className="bg-red-600 hover:bg-red-700" onClick={() => {
           setEditItem(null)
-          setForm({ name: '', phone: '', email: '', avatar: '', bio: '', stateId: '', districtId: '', beat: '', status: 'pending', canPublishDirectly: false })
+          setForm({ name: '', phone: '', email: '', avatar: '', bio: '', stateId: '', districtId: '', mandalId: '', beat: '', status: 'pending', canPublishDirectly: false })
           setDialogOpen(true)
         }}>
           <Plus className="h-4 w-4 mr-2" /> Add Reporter
@@ -133,6 +137,7 @@ export default function ReportersPage() {
                     <TableHead>Name</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>District</TableHead>
+                    <TableHead>Mandal</TableHead>
                     <TableHead>Beat</TableHead>
                     <TableHead>Submissions</TableHead>
                     <TableHead>Can Publish</TableHead>
@@ -158,6 +163,7 @@ export default function ReportersPage() {
                       </TableCell>
                       <TableCell className="text-sm">{r.phone}</TableCell>
                       <TableCell className="text-sm">{r.district?.name || '-'}</TableCell>
+                      <TableCell className="text-sm">{r.mandal?.name || '-'}</TableCell>
                       <TableCell><Badge variant="outline">{r.beat || 'General'}</Badge></TableCell>
                       <TableCell>{r._count?.news || 0}</TableCell>
                       <TableCell>{r.canPublishDirectly ? <UserCheck className="h-4 w-4 text-green-600" /> : <UserX className="h-4 w-4 text-gray-400" />}</TableCell>
@@ -193,11 +199,20 @@ export default function ReportersPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>District</Label>
-                <select className="w-full border rounded-md p-2 text-sm" value={form.districtId as string} onChange={e => setForm(p => ({ ...p, districtId: e.target.value }))}>
+                <select className="w-full border rounded-md p-2 text-sm" value={form.districtId as string} onChange={e => setForm(p => ({ ...p, districtId: e.target.value, mandalId: '' }))}>
                   <option value="">Select district</option>
                   {districts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
               </div>
+              <div className="space-y-2">
+                <Label>Mandal</Label>
+                <select className="w-full border rounded-md p-2 text-sm" value={form.mandalId as string} onChange={e => setForm(p => ({ ...p, mandalId: e.target.value }))}>
+                  <option value="">Select mandal</option>
+                  {(form.districtId ? mandals.filter(m => m.districtId === form.districtId) : mandals).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Beat</Label><Input value={form.beat as string} onChange={e => setForm(p => ({ ...p, beat: e.target.value }))} placeholder="Politics, Crime..." /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">

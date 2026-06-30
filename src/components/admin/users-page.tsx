@@ -45,11 +45,18 @@ interface UserItem {
   createdAt: string
   state: { name: string } | null
   district: { name: string } | null
+  mandal: { name: string } | null
 }
 
 interface District {
   id: string
   name: string
+}
+
+interface Mandal {
+  id: string
+  name: string
+  districtId: string
 }
 
 interface UsersResponse {
@@ -62,11 +69,13 @@ interface UsersResponse {
 export default function UsersPage() {
   const [users, setUsers] = useState<UserItem[]>([])
   const [districts, setDistricts] = useState<District[]>([])
+  const [mandals, setMandals] = useState<Mandal[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [districtId, setDistrictId] = useState('')
+  const [mandalId, setMandalId] = useState('')
   const limit = 20
 
   // Edit dialog
@@ -77,6 +86,7 @@ export default function UsersPage() {
     isActive: true,
     isPremium: false,
     districtId: '',
+    mandalId: '',
     stateId: '',
   })
   const [saving, setSaving] = useState(false)
@@ -98,6 +108,7 @@ export default function UsersPage() {
       })
       if (search) params.set('search', search)
       if (districtId) params.set('districtId', districtId)
+      if (mandalId) params.set('mandalId', mandalId)
 
       const data = await authFetchJson<UsersResponse>(`/api/admin/users?${params.toString()}`)
       setUsers(data.users)
@@ -107,7 +118,7 @@ export default function UsersPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, districtId])
+  }, [page, search, districtId, mandalId])
 
   useEffect(() => {
     fetchUsers()
@@ -117,6 +128,9 @@ export default function UsersPage() {
     authFetchJson<District[]>('/api/admin/districts')
       .then(setDistricts)
       .catch(() => toast.error('Failed to load districts'))
+    authFetchJson<Mandal[]>('/api/admin/mandals')
+      .then(setMandals)
+      .catch(() => toast.error('Failed to load mandals'))
   }, [])
 
   // Reset to page 1 when filters change
@@ -127,6 +141,12 @@ export default function UsersPage() {
 
   const handleDistrictChange = (value: string) => {
     setDistrictId(value)
+    setMandalId('') // Reset mandal when district changes
+    setPage(1)
+  }
+
+  const handleMandalChange = (value: string) => {
+    setMandalId(value)
     setPage(1)
   }
 
@@ -137,6 +157,7 @@ export default function UsersPage() {
       isActive: user.isActive,
       isPremium: user.isPremium,
       districtId: user.districtId || '',
+      mandalId: user.mandalId || '',
       stateId: user.stateId || '',
     })
     setEditDialogOpen(true)
@@ -258,9 +279,9 @@ export default function UsersPage() {
                 className="pl-9"
               />
             </div>
-            <div className="w-full sm:w-56">
+            <div className="w-full sm:w-auto flex gap-2">
               <select
-                className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="w-full sm:w-[200px] border rounded-md px-3 py-2 text-sm bg-background h-10"
                 value={districtId}
                 onChange={(e) => handleDistrictChange(e.target.value)}
               >
@@ -271,6 +292,38 @@ export default function UsersPage() {
                   </option>
                 ))}
               </select>
+
+              <select
+                className="w-full sm:w-[200px] border rounded-md px-3 py-2 text-sm bg-background h-10"
+                value={mandalId}
+                onChange={(e) => handleMandalChange(e.target.value)}
+                disabled={!districtId}
+              >
+                <option value="">All Mandals</option>
+                {mandals
+                  .filter((m) => m.districtId === districtId)
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+              </select>
+
+              {/* Clear filters */}
+              {(search || districtId || mandalId) && (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setSearch('')
+                    setDistrictId('')
+                    setMandalId('')
+                    setPage(1)
+                  }}
+                  className="h-10 px-3"
+                >
+                  Clear
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>
@@ -302,7 +355,7 @@ export default function UsersPage() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Phone</TableHead>
-                    <TableHead className="hidden md:table-cell">District</TableHead>
+                    <TableHead className="hidden md:table-cell">Location</TableHead>
                     <TableHead>Language</TableHead>
                     <TableHead>Premium</TableHead>
                     <TableHead>Status</TableHead>
@@ -339,14 +392,19 @@ export default function UsersPage() {
                         {user.phone}
                       </TableCell>
 
-                      {/* District */}
-                      <TableCell className="hidden md:table-cell text-sm">
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                          <span className="truncate max-w-[120px]">
-                            {user.district?.name || '—'}
-                          </span>
-                        </div>
+                      {/* Location */}
+                      <TableCell className="hidden md:table-cell">
+                          <div className="flex flex-col text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {user.district?.name || '—'}
+                            </span>
+                            {user.mandal?.name && (
+                              <span className="flex items-center gap-1 text-xs ml-4 mt-0.5">
+                                • {user.mandal.name}
+                              </span>
+                            )}
+                          </div>
                       </TableCell>
 
                       {/* Language Badge */}
@@ -573,11 +631,17 @@ export default function UsersPage() {
                   </p>
                   <p className="text-sm font-mono">{viewUser.phone}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <MapPin className="h-3 w-3" /> District
-                  </p>
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">
+                    District
+                  </h4>
                   <p className="text-sm">{viewUser.district?.name || '—'}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">
+                    Mandal
+                  </h4>
+                  <p className="text-sm">{viewUser.mandal?.name || '—'}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -657,10 +721,10 @@ export default function UsersPage() {
               <div className="space-y-2">
                 <Label>District</Label>
                 <select
-                  className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="w-full border rounded-md p-2 text-sm bg-background"
                   value={editForm.districtId}
                   onChange={(e) =>
-                    setEditForm((p) => ({ ...p, districtId: e.target.value }))
+                    setEditForm((p) => ({ ...p, districtId: e.target.value, mandalId: '' }))
                   }
                 >
                   <option value="">Select district</option>
@@ -669,6 +733,27 @@ export default function UsersPage() {
                       {d.name}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              {/* Editable: Mandal */}
+              <div className="space-y-2">
+                <Label>Mandal</Label>
+                <select
+                  className="w-full border rounded-md p-2 text-sm bg-background"
+                  value={editForm.mandalId}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, mandalId: e.target.value }))
+                  }
+                >
+                  <option value="">Select mandal</option>
+                  {mandals
+                    .filter((m) => m.districtId === editForm.districtId)
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
                 </select>
               </div>
 

@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { seedData } from './seed_data'
 
 const prisma = new PrismaClient()
 
@@ -21,33 +22,37 @@ async function main() {
   })
   console.log('✅ Admin created:', admin.email)
 
-  // 3. Create Telangana State
-  const telangana = await prisma.state.upsert({
-    where: { code: 'TG' },
-    update: {},
-    create: { name: 'Telangana', code: 'TG', isActive: true },
-  })
-  console.log('✅ State created:', telangana.name)
-
-  // 4. Create all 33 Telangana Districts
-  const districtNames = [
-    'Adilabad', 'Bhadradri Kothagudem', 'Hanumakonda', 'Hyderabad',
-    'Jagtial', 'Jangaon', 'Jayashankar Bhupalpally', 'Jogulamba Gadwal',
-    'Kamareddy', 'Karimnagar', 'Khammam', 'Komaram Bheem Asifabad',
-    'Mahabubabad', 'Mahabubnagar', 'Mancherial', 'Medak',
-    'Medchal Malkajgiri', 'Mulugu', 'Nagarkurnool', 'Nalgonda',
-    'Narayanpet', 'Nirmal', 'Nizamabad', 'Peddapalli',
-    'Rajanna Sircilla', 'Rangareddy', 'Sangareddy', 'Siddipet',
-    'Suryapet', 'Vikarabad', 'Wanaparthy', 'Warangal', 'Yadadri Bhuvanagiri'
-  ]
-  for (const name of districtNames) {
-    await prisma.district.upsert({
-      where: { id: `${telangana.id}-${name.toLowerCase().replace(/\s+/g, '-')}` },
+  // 3. Create States, Districts, and Mandals
+  let totalDistricts = 0;
+  let totalMandals = 0;
+  for (const stateData of seedData.states) {
+    const state = await prisma.state.upsert({
+      where: { code: stateData.code },
       update: {},
-      create: { name, stateId: telangana.id, isActive: true },
+      create: { name: stateData.name, code: stateData.code, isActive: true },
     })
+    console.log(`✅ State created: ${state.name}`)
+
+    const districts = seedData.districts[stateData.code as keyof typeof seedData.districts] || []
+    for (const d of districts) {
+      const district = await prisma.district.upsert({
+        where: { id: `${state.id}-${d.name.toLowerCase().replace(/\s+/g, '-')}` },
+        update: {},
+        create: { name: d.name, stateId: state.id, isActive: true },
+      })
+      totalDistricts++;
+
+      for (const mName of d.mandals) {
+        await prisma.mandal.upsert({
+          where: { id: `${district.id}-${mName.toLowerCase().replace(/\s+/g, '-')}` },
+          update: {},
+          create: { name: mName, districtId: district.id, isActive: true },
+        })
+        totalMandals++;
+      }
+    }
   }
-  console.log(`✅ ${districtNames.length} districts created`)
+  console.log(`✅ ${totalDistricts} districts and ${totalMandals} mandals created across ${seedData.states.length} states`)
 
   // 5. Create Categories (single language)
   const categoriesData = [

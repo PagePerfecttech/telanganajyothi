@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
         email: data.email,
         stateId: data.stateId,
         districtId: data.districtId,
+        mandalId: data.mandalId,
         preferredLanguage: data.preferredLanguage,
         preferredCategories: data.preferredCategories ? safeJsonStringify(data.preferredCategories) : undefined,
         avatar: data.avatar,

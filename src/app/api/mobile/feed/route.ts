@@ -5,9 +5,9 @@ import { verifyFirebaseToken } from '@/lib/firebase-admin'
 import { safeJsonParse } from '@/lib/json-utils'
 
 const feedQuerySchema = z.object({
+  mandal_id: z.string().cuid().optional(),
   district_id: z.string().cuid().optional(),
-  category_id: z.string().cuid().optional(),
-  categories: z.string().optional(),
+  state_id: z.string().cuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(10),
 })
@@ -16,9 +16,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
 
   const parsed = feedQuerySchema.safeParse({
+    mandal_id: searchParams.get('mandal_id') ?? undefined,
     district_id: searchParams.get('district_id') ?? undefined,
-    category_id: searchParams.get('category_id') ?? undefined,
-    categories: searchParams.get('categories') ?? undefined,
+    state_id: searchParams.get('state_id') ?? undefined,
     page: searchParams.get('page') ?? undefined,
     limit: searchParams.get('limit') ?? undefined,
   })
@@ -30,9 +30,10 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const { district_id: districtId, category_id: categoryId, categories, page, limit } = parsed.data
+  const { mandal_id: mandalId, district_id: districtId, state_id: stateId, page, limit } = parsed.data
 
   try {
+    // Resolve user from auth token
     let dbUser: any = null;
     const authHeader = request.headers.get('authorization')
     if (authHeader) {
@@ -47,104 +48,125 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Resolve location IDs: query params > user profile > undefined
+    const finalMandalId = mandalId || dbUser?.mandalId || undefined;
     const finalDistrictId = districtId || dbUser?.districtId || undefined;
-    const preferredCats = safeJsonParse<string[]>(dbUser?.preferredCategories, []);
-    
+    const finalStateId = stateId || dbUser?.stateId || undefined;
+
     const baseWhere: Record<string, unknown> = {
       status: 'published',
       deletedAt: null,
       publishedAt: { lte: new Date() },
     }
-    
-    const filterConditions: Record<string, unknown> = {};
-    if (finalDistrictId) {
-      filterConditions.districtId = finalDistrictId;
-    }
-    
-    const requestCats = categories ? categories.split(',').filter(Boolean) : [];
-    if (categoryId) {
-      filterConditions.categoryId = categoryId;
-    } else if (requestCats.length > 0) {
-      filterConditions.categoryId = { in: requestCats };
-    } else if (preferredCats.length > 0) {
-      filterConditions.categoryId = { in: preferredCats };
-    }
 
-    const hasFilters = Object.keys(filterConditions).length > 0;
-    
-    const selectAndOrder = {
-      select: {
-        id: true,
-        title: true,
-        shortDesc: true,
-        thumbnailUrl: true,
-        imagesUrls: true,
-        priority: true,
-        publishedAt: true,
-        viewsCount: true,
-        sharesCount: true,
-        category: { select: { name: true, slug: true, color: true } },
-        district: { select: { name: true } },
-        reporter: { select: { name: true, avatar: true } },
-        _count: {
-          select: {
-            comments: { where: { isActive: true } },
-            reactions: true,
-          }
+    const selectFields = {
+      id: true,
+      title: true,
+      shortDesc: true,
+      thumbnailUrl: true,
+      imagesUrls: true,
+      priority: true,
+      publishedAt: true,
+      viewsCount: true,
+      sharesCount: true,
+      mandalId: true,
+      districtId: true,
+      stateId: true,
+      category: { select: { name: true, slug: true, color: true } },
+      district: { select: { name: true } },
+      mandal: { select: { name: true } },
+      reporter: { select: { name: true, avatar: true } },
+      sourceUrl: true,
+      _count: {
+        select: {
+          comments: { where: { isActive: true } },
+          reactions: true,
         }
-      },
-      orderBy: { createdAt: 'desc' as const },
+      }
     };
+
+    const orderBy = { publishedAt: 'desc' as const };
+    const offset = (page - 1) * limit;
+
+    // 4-tier priority feed: mandal → district → state → other
+    const hasLocationFilters = finalMandalId || finalDistrictId || finalStateId;
 
     let news: any[] = [];
     let total = 0;
-    const offset = (page - 1) * limit;
 
-    if (hasFilters) {
-      const filteredWhere = { ...baseWhere, ...filterConditions };
-      const unfilteredWhere = { ...baseWhere, NOT: filterConditions };
+    if (hasLocationFilters) {
+      // Build tier conditions
+      const tiers: Record<string, unknown>[] = [];
 
-      const [totalFiltered, totalUnfiltered] = await Promise.all([
-        db.news.count({ where: filteredWhere }),
-        db.news.count({ where: unfilteredWhere }),
-      ]);
-      total = totalFiltered + totalUnfiltered;
-
-      if (offset < totalFiltered) {
-        const takeFiltered = Math.min(limit, totalFiltered - offset);
-        const filteredNews = await db.news.findMany({
-          where: filteredWhere,
-          ...selectAndOrder,
-          skip: offset,
-          take: takeFiltered,
-        });
-        news.push(...filteredNews);
-
-        if (takeFiltered < limit) {
-          const takeUnfiltered = limit - takeFiltered;
-          const unfilteredNews = await db.news.findMany({
-            where: unfilteredWhere,
-            ...selectAndOrder,
-            skip: 0,
-            take: takeUnfiltered,
-          });
-          news.push(...unfilteredNews);
+      if (finalMandalId) {
+        tiers.push({ ...baseWhere, mandalId: finalMandalId });
+      }
+      if (finalDistrictId) {
+        const districtCondition: Record<string, unknown> = { ...baseWhere, districtId: finalDistrictId };
+        if (finalMandalId) {
+          districtCondition.NOT = { mandalId: finalMandalId };
         }
-      } else {
-        const skipUnfiltered = offset - totalFiltered;
-        const unfilteredNews = await db.news.findMany({
-          where: unfilteredWhere,
-          ...selectAndOrder,
-          skip: skipUnfiltered,
-          take: limit,
+        tiers.push(districtCondition);
+      }
+      if (finalStateId) {
+        const stateCondition: Record<string, unknown> = { ...baseWhere, stateId: finalStateId };
+        const notConditions: Record<string, unknown>[] = [];
+        if (finalDistrictId) notConditions.push({ districtId: finalDistrictId });
+        if (finalMandalId) notConditions.push({ mandalId: finalMandalId });
+        if (notConditions.length > 0) {
+          stateCondition.NOT = notConditions.length === 1 ? notConditions[0] : { AND: notConditions };
+        }
+        tiers.push(stateCondition);
+      }
+
+      // "Other" tier: everything not in above tiers
+      const otherNotConditions: Record<string, unknown>[] = [];
+      if (finalStateId) otherNotConditions.push({ stateId: finalStateId });
+      if (finalDistrictId) otherNotConditions.push({ districtId: finalDistrictId });
+      if (finalMandalId) otherNotConditions.push({ mandalId: finalMandalId });
+      
+      const otherWhere: Record<string, unknown> = { ...baseWhere };
+      if (otherNotConditions.length > 0) {
+        otherWhere.AND = otherNotConditions.map(c => ({ NOT: c }));
+      }
+      tiers.push(otherWhere);
+
+      // Count all tiers
+      const tierCounts = await Promise.all(tiers.map(w => db.news.count({ where: w })));
+      total = tierCounts.reduce((sum, c) => sum + c, 0);
+
+      // Fetch from tiers in priority order
+      let remaining = limit;
+      let skipped = offset;
+
+      for (let i = 0; i < tiers.length && remaining > 0; i++) {
+        const tierCount = tierCounts[i];
+        
+        if (skipped >= tierCount) {
+          skipped -= tierCount;
+          continue;
+        }
+
+        const take = Math.min(remaining, tierCount - skipped);
+        const tierNews = await db.news.findMany({
+          where: tiers[i],
+          select: selectFields,
+          orderBy,
+          skip: skipped,
+          take,
         });
-        news.push(...unfilteredNews);
+        
+        news.push(...tierNews);
+        remaining -= tierNews.length;
+        skipped = 0; // After first tier with data, skip is consumed
       }
     } else {
+      // No location filters — show all news chronologically
       const [allNews, allTotal] = await Promise.all([
         db.news.findMany({
           where: baseWhere,
-          ...selectAndOrder,
+          select: selectFields,
+          orderBy,
           skip: offset,
           take: limit,
         }),
@@ -198,4 +220,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-
