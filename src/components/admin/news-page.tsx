@@ -413,7 +413,7 @@ export default function NewsPage() {
 // Full-Page News Form Component
 // ============================================================
 function NewsFormPage({
-  editItemId, onSave, onCancel, categories, states, districts, reporters, tags,
+  editItemId, onSave, onCancel, categories, states, districts, mandals, reporters, tags,
 }: {
   editItemId: string | null
   onSave: (data: Record<string, unknown>) => void

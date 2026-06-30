@@ -39,6 +39,7 @@ interface UserItem {
   avatar: string | null
   stateId: string | null
   districtId: string | null
+  mandalId: string | null
   preferredLanguage: string
   isActive: boolean
   isPremium: boolean

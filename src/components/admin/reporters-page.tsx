@@ -22,6 +22,7 @@ interface ReporterItem {
   email: string | null
   avatar: string | null
   bio: string | null
+  stateId: string
   districtId: string
   mandalId: string | null
   beat: string | null
