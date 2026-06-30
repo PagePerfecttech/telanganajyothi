@@ -44,8 +44,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient coins' }, { status: 400 })
     }
 
-    const rateSetting = await db.setting.findUnique({ where: { key: 'COIN_TO_MONEY_RATE' } })
-    const conversionRate = rateSetting ? parseFloat(rateSetting.value) : 0.01
+    const rateSetting = await db.setting.findUnique({ where: { key: 'COINS_PER_INR' } })
+    const coinsPerInr = rateSetting && !isNaN(parseFloat(rateSetting.value)) ? parseFloat(rateSetting.value) : 100 // Default: 100 coins = 1 INR
+    const conversionRate = 1 / coinsPerInr
 
     const moneyAmount = coins * conversionRate
 

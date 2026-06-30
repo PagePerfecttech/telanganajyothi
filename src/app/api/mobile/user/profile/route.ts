@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     const user = await db.user.update({
       where: { id: dbUser.id },
       data: {
-        name: data.name,
+        name: data.name || decodedToken.name || undefined,
         email: data.email,
         stateId: data.stateId,
         districtId: data.districtId,

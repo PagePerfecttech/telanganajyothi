@@ -39,8 +39,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Reporter not found' }, { status: 404 })
     }
 
-    const rateSetting = await db.setting.findUnique({ where: { key: 'COIN_TO_MONEY_RATE' } })
-    const conversionRate = rateSetting ? parseFloat(rateSetting.value) : 0.01 // Default: 1 coin = 0.01 INR (100 coins = 1 INR)
+    const rateSetting = await db.setting.findUnique({ where: { key: 'COINS_PER_INR' } })
+    const coinsPerInr = rateSetting && !isNaN(parseFloat(rateSetting.value)) ? parseFloat(rateSetting.value) : 100 // Default: 100 coins = 1 INR
+    const conversionRate = 1 / coinsPerInr
 
     return NextResponse.json({
       balance: reporter.coinsBalance,

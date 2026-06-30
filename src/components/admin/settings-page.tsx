@@ -176,13 +176,13 @@ export default function SettingsPage() {
             </div>
           </div>
           <div className="space-y-2 pt-2">
-            <Label>Coin to INR Conversion Rate</Label>
-            <p className="text-xs text-muted-foreground">e.g., 0.01 means 100 coins = 1 INR</p>
+            <Label>Coins equivalent to 1 INR</Label>
+            <p className="text-xs text-muted-foreground">e.g., 5 means 5 coins = 1 INR</p>
             <Input 
               type="number"
-              step="0.001"
-              value={settings.COIN_TO_MONEY_RATE || '0.01'} 
-              onChange={e => updateSetting('COIN_TO_MONEY_RATE', e.target.value)} 
+              step="1"
+              value={settings.COINS_PER_INR || '100'} 
+              onChange={e => updateSetting('COINS_PER_INR', e.target.value)} 
             />
           </div>
         </CardContent>

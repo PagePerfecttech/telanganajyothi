@@ -136,8 +136,16 @@ export async function POST(request: NextRequest) {
       videoUrl = data.videoUrl;
     }
 
-    if (!title || !categoryId || !stateId) {
+    if (!title || !categoryId) {
        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+    
+    // Force the news location to match the reporter's allotted location
+    stateId = reporter.stateId || stateId;
+    districtId = reporter.districtId || districtId;
+    
+    if (!stateId) {
+       return NextResponse.json({ error: 'Reporter location not configured' }, { status: 400 })
     }
 
     if (thumbnailBase64) {
