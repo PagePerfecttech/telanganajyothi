@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     const token = authHeader.split('Bearer ')[1]
     let decodedToken;
     try {
-      decodedToken = await verifyFirebaseToken(token);
+      decodedToken = await verifyFirebaseToken(authHeader);
     } catch (e: any) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
