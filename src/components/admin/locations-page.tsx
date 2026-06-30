@@ -16,7 +16,7 @@ import { Plus, Pencil, Trash2, MapPin } from 'lucide-react'
 import { authFetch, authFetchJSON, authFetchJson } from '@/lib/utils'
 
 interface StateItem { id: string; name: string; code: string; isActive: boolean; _count?: { districts: number; news: number } }
-interface DistrictItem { id: string; name: string; stateId: string; isActive: boolean; state?: { name: string }; _count?: { news: number; mandals: number } }
+interface DistrictItem { id: string; name: string; stateId: string; isActive: boolean; state?: { name: string; code?: string }; _count?: { news: number; mandals: number } }
 interface MandalItem { id: string; name: string; districtId: string; isActive: boolean; district?: { name: string; state?: { name: string; code: string } }; _count?: { news: number } }
 
 export default function LocationsPage() {

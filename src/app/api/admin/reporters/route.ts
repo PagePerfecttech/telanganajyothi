@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
       include: {
         state: { select: { name: true } },
         district: { select: { name: true } },
+        mandal: { select: { name: true } },
         _count: { select: { news: { where: { deletedAt: null } } } },
       },
       orderBy: { createdAt: 'desc' },
@@ -37,6 +38,7 @@ export async function POST(request: NextRequest) {
         bio: data.bio || null,
         stateId: data.stateId,
         districtId: data.districtId,
+        mandalId: data.mandalId || null,
         beat: data.beat || null,
         status: data.status || 'pending',
         canPublishDirectly: data.canPublishDirectly || false,

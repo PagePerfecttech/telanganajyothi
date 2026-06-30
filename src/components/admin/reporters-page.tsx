@@ -33,7 +33,8 @@ interface ReporterItem {
   _count?: { news: number }
 }
 
-interface District { id: string; name: string }
+interface State { id: string; name: string; code: string }
+interface District { id: string; name: string; stateId: string }
 interface Mandal { id: string; name: string; districtId: string }
 
 const statusColors: Record<string, string> = {
@@ -44,6 +45,7 @@ const statusColors: Record<string, string> = {
 
 export default function ReportersPage() {
   const [reporters, setReporters] = useState<ReporterItem[]>([])
+  const [states, setStates] = useState<State[]>([])
   const [districts, setDistricts] = useState<District[]>([])
   const [mandals, setMandals] = useState<Mandal[]>([])
   const [loading, setLoading] = useState(true)
@@ -65,6 +67,7 @@ export default function ReportersPage() {
 
   useEffect(() => {
     fetchReporters()
+    authFetchJson<State[]>('/api/admin/states').then(setStates).catch(() => toast.error('Failed to load states'))
     authFetchJson<District[]>('/api/admin/districts').then(setDistricts).catch(() => toast.error('Failed to load districts'))
     authFetchJson<Mandal[]>('/api/admin/mandals').then(setMandals).catch(() => toast.error('Failed to load mandals'))
   }, [fetchReporters])
@@ -136,6 +139,7 @@ export default function ReportersPage() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Phone</TableHead>
+                    <TableHead>State</TableHead>
                     <TableHead>District</TableHead>
                     <TableHead>Mandal</TableHead>
                     <TableHead>Beat</TableHead>
@@ -162,6 +166,7 @@ export default function ReportersPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">{r.phone}</TableCell>
+                      <TableCell className="text-sm">{r.state?.name || '-'}</TableCell>
                       <TableCell className="text-sm">{r.district?.name || '-'}</TableCell>
                       <TableCell className="text-sm">{r.mandal?.name || '-'}</TableCell>
                       <TableCell><Badge variant="outline">{r.beat || 'General'}</Badge></TableCell>
@@ -196,12 +201,19 @@ export default function ReportersPage() {
               <div className="space-y-2"><Label>Avatar URL</Label><Input value={form.avatar as string} onChange={e => setForm(p => ({ ...p, avatar: e.target.value }))} /></div>
             </div>
             <div className="space-y-2"><Label>Bio</Label><Textarea value={form.bio as string} onChange={e => setForm(p => ({ ...p, bio: e.target.value }))} rows={2} /></div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>State</Label>
+                <select className="w-full border rounded-md p-2 text-sm" value={form.stateId as string} onChange={e => setForm(p => ({ ...p, stateId: e.target.value, districtId: '', mandalId: '' }))}>
+                  <option value="">Select state</option>
+                  {states.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
               <div className="space-y-2">
                 <Label>District</Label>
                 <select className="w-full border rounded-md p-2 text-sm" value={form.districtId as string} onChange={e => setForm(p => ({ ...p, districtId: e.target.value, mandalId: '' }))}>
                   <option value="">Select district</option>
-                  {districts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  {(form.stateId ? districts.filter(d => d.stateId === form.stateId) : districts).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
               </div>
               <div className="space-y-2">

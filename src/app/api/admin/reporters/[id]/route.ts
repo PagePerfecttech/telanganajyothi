@@ -16,6 +16,7 @@ export async function GET(
       include: {
         state: true,
         district: true,
+        mandal: true,
         _count: { select: { news: { where: { deletedAt: null } } } },
       },
     })
@@ -51,6 +52,7 @@ export async function PUT(
       bio: data.bio || null,
       stateId: data.stateId,
       districtId: data.districtId,
+      mandalId: data.mandalId || null,
       beat: data.beat || null,
       status: data.status,
       canPublishDirectly: data.canPublishDirectly,

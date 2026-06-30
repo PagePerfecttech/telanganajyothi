@@ -48,9 +48,16 @@ interface UserItem {
   mandal: { name: string } | null
 }
 
+interface State {
+  id: string
+  name: string
+  code: string
+}
+
 interface District {
   id: string
   name: string
+  stateId: string
 }
 
 interface Mandal {
@@ -68,12 +75,14 @@ interface UsersResponse {
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserItem[]>([])
+  const [states, setStates] = useState<State[]>([])
   const [districts, setDistricts] = useState<District[]>([])
   const [mandals, setMandals] = useState<Mandal[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
+  const [stateId, setStateId] = useState('')
   const [districtId, setDistrictId] = useState('')
   const [mandalId, setMandalId] = useState('')
   const limit = 20
@@ -107,6 +116,7 @@ export default function UsersPage() {
         limit: limit.toString(),
       })
       if (search) params.set('search', search)
+      if (stateId) params.set('stateId', stateId)
       if (districtId) params.set('districtId', districtId)
       if (mandalId) params.set('mandalId', mandalId)
 
@@ -118,13 +128,16 @@ export default function UsersPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, districtId, mandalId])
+  }, [page, search, stateId, districtId, mandalId])
 
   useEffect(() => {
     fetchUsers()
   }, [fetchUsers])
 
   useEffect(() => {
+    authFetchJson<State[]>('/api/admin/states')
+      .then(setStates)
+      .catch(() => toast.error('Failed to load states'))
     authFetchJson<District[]>('/api/admin/districts')
       .then(setDistricts)
       .catch(() => toast.error('Failed to load districts'))
@@ -136,6 +149,13 @@ export default function UsersPage() {
   // Reset to page 1 when filters change
   const handleSearchChange = (value: string) => {
     setSearch(value)
+    setPage(1)
+  }
+
+  const handleStateChange = (value: string) => {
+    setStateId(value)
+    setDistrictId('')
+    setMandalId('')
     setPage(1)
   }
 
@@ -279,14 +299,28 @@ export default function UsersPage() {
                 className="pl-9"
               />
             </div>
-            <div className="w-full sm:w-auto flex gap-2">
+            <div className="w-full sm:w-auto flex flex-wrap gap-2">
               <select
-                className="w-full sm:w-[200px] border rounded-md px-3 py-2 text-sm bg-background h-10"
+                className="w-full sm:w-[160px] border rounded-md px-3 py-2 text-sm bg-background h-10"
+                value={stateId}
+                onChange={(e) => handleStateChange(e.target.value)}
+              >
+                <option value="">All States</option>
+                {states.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className="w-full sm:w-[160px] border rounded-md px-3 py-2 text-sm bg-background h-10"
                 value={districtId}
                 onChange={(e) => handleDistrictChange(e.target.value)}
+                disabled={!stateId}
               >
                 <option value="">All Districts</option>
-                {districts.map((d) => (
+                {(stateId ? districts.filter((d) => d.stateId === stateId) : districts).map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
                   </option>
@@ -310,11 +344,12 @@ export default function UsersPage() {
               </select>
 
               {/* Clear filters */}
-              {(search || districtId || mandalId) && (
+              {(search || stateId || districtId || mandalId) && (
                 <Button
                   variant="ghost"
                   onClick={() => {
                     setSearch('')
+                    setStateId('')
                     setDistrictId('')
                     setMandalId('')
                     setPage(1)
@@ -343,7 +378,7 @@ export default function UsersPage() {
               <Users className="h-12 w-12 mb-3 opacity-40" />
               <p className="text-sm font-medium">No users found</p>
               <p className="text-xs mt-1">
-                {search || districtId
+                {search || stateId || districtId
                   ? 'Try adjusting your search or filter'
                   : 'Users will appear here when they sign up'}
               </p>
@@ -717,6 +752,25 @@ export default function UsersPage() {
                 />
               </div>
 
+              {/* Editable: State */}
+              <div className="space-y-2">
+                <Label>State</Label>
+                <select
+                  className="w-full border rounded-md p-2 text-sm bg-background"
+                  value={editForm.stateId}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, stateId: e.target.value, districtId: '', mandalId: '' }))
+                  }
+                >
+                  <option value="">Select state</option>
+                  {states.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Editable: District */}
               <div className="space-y-2">
                 <Label>District</Label>
@@ -728,7 +782,7 @@ export default function UsersPage() {
                   }
                 >
                   <option value="">Select district</option>
-                  {districts.map((d) => (
+                  {(editForm.stateId ? districts.filter((d) => d.stateId === editForm.stateId) : districts).map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.name}
                     </option>

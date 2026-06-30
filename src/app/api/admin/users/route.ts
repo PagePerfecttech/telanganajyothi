@@ -8,7 +8,9 @@ export async function GET(request: NextRequest) {
     if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
+    const stateId = searchParams.get('stateId')
     const districtId = searchParams.get('districtId')
+    const mandalId = searchParams.get('mandalId')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
 
@@ -20,7 +22,9 @@ export async function GET(request: NextRequest) {
         { email: { contains: search } },
       ]
     }
+    if (stateId) where.stateId = stateId
     if (districtId) where.districtId = districtId
+    if (mandalId) where.mandalId = mandalId
 
     const [users, total] = await Promise.all([
       db.user.findMany({
@@ -28,6 +32,7 @@ export async function GET(request: NextRequest) {
         include: {
           state: { select: { name: true } },
           district: { select: { name: true } },
+          mandal: { select: { name: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
