@@ -185,6 +185,7 @@ model News {
   imagesUrls   String         @default("[]") @map("images_urls")
   videoUrl     String?        @map("video_url")
   sourceType   String         @default("original") @map("source_type")
+  sourceUrl    String?        @map("source_url")
   reporterId   String?        @map("reporter_id")
   priority     String         @default("normal")
   status       String         @default("draft")
