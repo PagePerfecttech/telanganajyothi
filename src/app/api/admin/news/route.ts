@@ -131,9 +131,9 @@ export async function POST(request: NextRequest) {
     if (news.status === 'published' && data.sendNotification !== false) {
       try {
         await messaging.send({
-          topic: news.districtId ? `district_${news.districtId}` : 'all',
+          topic: news.districtId ? `district_${news.districtId}` : `state_${news.stateId}`,
           notification: {
-            title: news.districtId ? 'New Update in Your District' : 'Breaking News',
+            title: news.districtId ? 'New Update in Your District' : 'New Update in Your State',
             body: news.title,
             imageUrl: news.thumbnailUrl || undefined,
           },

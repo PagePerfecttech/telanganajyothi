@@ -20,7 +20,7 @@ export async function GET() {
           select: {
             id: true,
             name: true,
-            mandals: {
+            assemblies: {
               where: {
                 isActive: true,
                 deletedAt: null,
@@ -31,6 +31,19 @@ export async function GET() {
               select: {
                 id: true,
                 name: true,
+                mandals: {
+                  where: {
+                    isActive: true,
+                    deletedAt: null,
+                  },
+                  orderBy: {
+                    name: 'asc',
+                  },
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
               },
             },
           }
