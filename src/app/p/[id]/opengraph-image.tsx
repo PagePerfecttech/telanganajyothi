@@ -87,7 +87,7 @@ export default async function Image({ params }: { params: { id: string } }) {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            backgroundColor: '#F5F5F5',
+            backgroundColor: '#000000', // black background strip
             padding: '12px 16px',
             borderRadius: '8px',
             marginBottom: '16px'
@@ -98,16 +98,16 @@ export default async function Image({ params }: { params: { id: string } }) {
             />
             
             <span style={{ 
-              color: '#E53935', 
+              color: '#FFFFFF', // white slogan color
               fontSize: '18px', 
               fontWeight: 'bold',
             }}>
-              #STAY INFORMED, STAY UPDATED.
+              No.1 తెలుగు న్యూస్ డైలీ
             </span>
 
             {locationName ? (
               <div style={{ display: 'flex', alignItems: 'center' }}>
-                <span style={{ color: '#666666', fontSize: '18px', fontWeight: 'bold' }}>
+                <span style={{ color: '#E0E0E0', fontSize: '18px', fontWeight: 'bold' }}>
                   📍 {locationName}
                 </span>
               </div>
@@ -134,6 +134,27 @@ export default async function Image({ params }: { params: { id: string } }) {
               overflow: 'hidden'
             }}>
               {news.shortDesc}
+            </span>
+          </div>
+
+          {/* Reporter & Time Row */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            borderTop: '1px solid #E5E7EB', 
+            paddingTop: '16px', 
+            marginTop: '16px' 
+          }}>
+            <span style={{ color: '#555555', fontSize: '20px', fontWeight: 'bold' }}>
+              By {news.reporter?.name || 'Telangana Jyothi'}
+            </span>
+            <span style={{ color: '#888888', fontSize: '18px' }}>
+              {new Date(news.publishedAt || news.createdAt).toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+              })}
             </span>
           </div>
         </div>
