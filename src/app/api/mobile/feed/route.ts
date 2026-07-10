@@ -119,6 +119,7 @@ export async function GET(request: NextRequest) {
       district: { select: { name: true } },
       mandal: { select: { name: true } },
       reporter: { select: { name: true, avatar: true } },
+      tags: { select: { tag: { select: { name: true, slug: true } } } },
       sourceUrl: true,
       _count: {
         select: {
