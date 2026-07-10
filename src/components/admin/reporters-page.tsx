@@ -28,6 +28,7 @@ interface ReporterItem {
   beat: string | null
   status: string
   canPublishDirectly: boolean
+  coinsBalance: number
   state?: { name: string }
   district?: { name: string }
   mandal?: { name: string }
@@ -145,6 +146,7 @@ export default function ReportersPage() {
                     <TableHead>Mandal</TableHead>
                     <TableHead>Beat</TableHead>
                     <TableHead>Submissions</TableHead>
+                    <TableHead>Coins</TableHead>
                     <TableHead>Can Publish</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -172,6 +174,7 @@ export default function ReportersPage() {
                       <TableCell className="text-sm">{r.mandal?.name || '-'}</TableCell>
                       <TableCell><Badge variant="outline">{r.beat || 'General'}</Badge></TableCell>
                       <TableCell>{r._count?.news || 0}</TableCell>
+                      <TableCell className="font-semibold text-amber-600">{r.coinsBalance || 0}</TableCell>
                       <TableCell>{r.canPublishDirectly ? <UserCheck className="h-4 w-4 text-green-600" /> : <UserX className="h-4 w-4 text-gray-400" />}</TableCell>
                       <TableCell><Badge className={statusColors[r.status] || ''}>{r.status}</Badge></TableCell>
                       <TableCell className="text-right">

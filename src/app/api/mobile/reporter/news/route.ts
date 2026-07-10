@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { verifyFirebaseToken } from '@/lib/firebase-admin'
 import { s3Client, R2_BUCKET, R2_PUBLIC_URL } from '@/lib/r2'
 import { PutObjectCommand } from '@aws-sdk/client-s3'
+import { processNewsApprovalEarning } from '@/lib/wallet-service'
 
 async function uploadFileToR2(file: File, prefix: string): Promise<string> {
   const timestamp = Date.now()
@@ -196,6 +197,10 @@ export async function POST(request: NextRequest) {
         createdBy: admin.id,
       }
     })
+
+    if (reporter.canPublishDirectly) {
+      await processNewsApprovalEarning(news.id, !!videoUrl)
+    }
 
     return NextResponse.json({ message: 'News submitted successfully', news })
   } catch (error) {
