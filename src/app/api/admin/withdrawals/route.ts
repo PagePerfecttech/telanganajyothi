@@ -18,12 +18,21 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
       include: {
         reporter: {
-          select: { name: true, phone: true, district: true }
+          select: { name: true, phone: true, district: { select: { name: true } } }
         }
       }
     })
 
-    return NextResponse.json(withdrawals)
+    const formattedWithdrawals = withdrawals.map(w => ({
+      ...w,
+      reporter: {
+        name: w.reporter.name,
+        phone: w.reporter.phone,
+        district: w.reporter.district?.name || 'Unknown'
+      }
+    }))
+
+    return NextResponse.json(formattedWithdrawals)
   } catch (error) {
     console.error('Admin withdrawals list error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
