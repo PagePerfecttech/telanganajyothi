@@ -13,7 +13,7 @@ export default async function Image({ params }: { params: { id: string } }) {
 
   const news = await db.news.findUnique({
     where: { id },
-    include: { category: true, reporter: true }
+    include: { category: true, reporter: true, mandal: true, district: true }
   })
 
   if (!news) {
@@ -35,6 +35,8 @@ export default async function Image({ params }: { params: { id: string } }) {
   if (imageUrl && imageUrl.startsWith('/')) {
     finalImageUrl = `${baseUrl}${imageUrl}`
   }
+
+  const locationName = news.mandal?.name || news.district?.name || ''
 
   return new ImageResponse(
     (
@@ -70,65 +72,69 @@ export default async function Image({ params }: { params: { id: string } }) {
               By {news.reporter?.name || 'Telangana Jyothi'}
             </span>
           </div>
-
-          {/* Category Badge (Top Left) */}
-          {news.category && (
-            <div style={{ 
-              position: 'absolute', 
-              top: '20px', 
-              left: '20px',
-              backgroundColor: '#D32F2F',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              display: 'flex'
-            }}>
-              <span style={{ color: 'white', fontSize: '20px', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                {news.category.name}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Bottom Text Section */}
         <div style={{ 
           display: 'flex', 
           flexDirection: 'column', 
-          padding: '40px',
+          padding: '24px 40px',
           height: '270px',
           justifyContent: 'space-between'
         }}>
+          {/* Metadata Strip: card_strip, slogan, location */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#F5F5F5',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            marginBottom: '16px'
+          }}>
+            <img
+              src={`${baseUrl}/card_strip.jpeg`}
+              style={{ height: '32px', objectFit: 'contain' }}
+            />
+            
+            <span style={{ 
+              color: '#E53935', 
+              fontSize: '18px', 
+              fontWeight: 'bold',
+            }}>
+              #STAY INFORMED, STAY UPDATED.
+            </span>
+
+            {locationName ? (
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span style={{ color: '#666666', fontSize: '18px', fontWeight: 'bold' }}>
+                  📍 {locationName}
+                </span>
+              </div>
+            ) : <div />}
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ 
-              fontSize: '42px', 
+              fontSize: '36px', 
               fontWeight: 'bold', 
               color: '#111111', 
               lineHeight: 1.2,
-              maxHeight: '100px',
+              maxHeight: '80px',
               overflow: 'hidden'
             }}>
               {news.title}
             </span>
             <span style={{ 
-              fontSize: '28px', 
+              fontSize: '22px', 
               color: '#555555', 
-              marginTop: '16px',
+              marginTop: '8px',
               lineHeight: 1.4,
-              maxHeight: '80px',
+              maxHeight: '60px',
               overflow: 'hidden'
             }}>
               {news.shortDesc}
             </span>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: '#D32F2F', fontSize: '24px', fontWeight: 'bold' }}>
-              #STAY INFORMED, STAY UPDATED.
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span style={{ color: '#111111', fontSize: '20px', fontWeight: 'bold' }}>
-                Telangana Jyothi News
-              </span>
-            </div>
           </div>
         </div>
       </div>
