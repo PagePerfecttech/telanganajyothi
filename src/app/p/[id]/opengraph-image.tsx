@@ -1,11 +1,14 @@
 import { ImageResponse } from 'next/og'
 import { db } from '@/lib/db'
 import { safeJsonParse } from '@/lib/json-utils'
+import fs from 'fs'
+import path from 'path'
 
 export const alt = 'News Card'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export default async function Image({ params }: { params: { id: string } }) {
   const resolvedParams = typeof (params as any).then === 'function' ? await (params as any) : params;
@@ -29,7 +32,7 @@ export default async function Image({ params }: { params: { id: string } }) {
 
   const images = safeJsonParse<string[]>(news.imagesUrls, [])
   const imageUrl = news.thumbnailUrl || (images.length > 0 ? images[0] : null)
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://spotnews.in'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://m.telanganajyothi.in'
   
   let finalImageUrl = imageUrl
   if (imageUrl && imageUrl.startsWith('/')) {
@@ -37,6 +40,16 @@ export default async function Image({ params }: { params: { id: string } }) {
   }
 
   const locationName = news.mandal?.name || news.district?.name || ''
+
+  // Load card_strip.jpeg as base64 for reliable server-side rendering
+  let cardStripBase64 = ''
+  try {
+    const filePath = path.join(process.cwd(), 'public', 'card_strip.jpeg')
+    const fileBuffer = fs.readFileSync(filePath)
+    cardStripBase64 = `data:image/jpeg;base64,${fileBuffer.toString('base64')}`
+  } catch (e) {
+    console.error('Error reading card_strip.jpeg:', e)
+  }
 
   return new ImageResponse(
     (
@@ -93,7 +106,7 @@ export default async function Image({ params }: { params: { id: string } }) {
             marginBottom: '16px'
           }}>
             <img
-              src={`${baseUrl}/card_strip.jpeg`}
+              src={cardStripBase64}
               style={{ height: '32px', objectFit: 'contain' }}
             />
             
