@@ -77,12 +77,20 @@ export default async function NewsPreviewPage({ params }: PageProps) {
       <div className="max-w-md w-full bg-white rounded-[24px] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
         {/* Image Section - aspect ratio 4/3 */}
         {imageUrl && (
-          <div className="relative w-full aspect-[4/3] bg-gray-100">
+          <div className="relative w-full aspect-[4/3] bg-gray-100 flex items-center justify-center">
             <img
               src={imageUrl}
               alt={news.title}
               className="w-full h-full object-cover rounded-b-xl"
             />
+            {/* Watermark overlay */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <img
+                src="/spotnewslogo.png"
+                alt="Watermark"
+                className="w-28 h-auto opacity-15 object-contain"
+              />
+            </div>
           </div>
         )}
 
