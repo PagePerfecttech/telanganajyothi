@@ -32,11 +32,13 @@ async function main() {
     })
 
     for (const mandal of mandals) {
-      // Link mandal to the assembly
-      await prisma.mandal.update({
-        where: { id: mandal.id },
-        data: { assemblyId: assembly.id }
-      })
+      // Link mandal to the assembly safely
+      try {
+        await prisma.mandal.update({
+          where: { id: mandal.id },
+          data: { assemblyId: assembly.id }
+        })
+      } catch (_) {}
 
       // Create 2 dummy villages for each mandal if not exists
       const villageNames = [`${mandal.name} Rural`, `${mandal.name} Urban`]
