@@ -101,12 +101,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter by location if explicitly requested via query params (e.g. from Location Tab)
-    if (mandalId) {
-      baseWhere.mandalId = mandalId
-    } else if (districtId) {
-      baseWhere.districtId = districtId
+    if (mandalId || districtId || assembly_id || village_id) {
+      const locationConditions: any[] = [];
+      if (village_id) locationConditions.push({ villageId: village_id });
+      if (mandalId) locationConditions.push({ mandalId: mandalId });
+      if (assembly_id) locationConditions.push({ assemblyId: assembly_id });
+      if (districtId) locationConditions.push({ districtId: districtId });
+
+      if (locationConditions.length > 0) {
+        baseWhere.OR = locationConditions;
+      }
     } else if (stateId) {
-      baseWhere.stateId = stateId
+      baseWhere.stateId = stateId;
     }
 
     const selectFields = {
