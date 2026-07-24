@@ -32,17 +32,18 @@ export async function POST(request: NextRequest) {
         const data = await res.json();
         
         if (data.status === 'OK' && data.results && data.results.length > 0) {
-          // Process address components from the first precise geocoding result
-          const components = data.results[0].address_components || [];
-          for (const comp of components) {
-            if (comp.types.includes('administrative_area_level_1')) {
-              stateName = comp.long_name;
-            }
-            if (comp.types.includes('administrative_area_level_2')) {
-              districtName = comp.long_name;
-            }
-            if (comp.types.includes('locality') || comp.types.includes('administrative_area_level_3') || comp.types.includes('sublocality_level_1')) {
-              mandalName = comp.long_name;
+          for (const result of data.results) {
+            const components = result.address_components || [];
+            for (const comp of components) {
+              if (comp.types.includes('administrative_area_level_1') && !stateName) {
+                stateName = comp.long_name;
+              }
+              if (comp.types.includes('administrative_area_level_2') && !districtName) {
+                districtName = comp.long_name;
+              }
+              if ((comp.types.includes('locality') || comp.types.includes('administrative_area_level_3') || comp.types.includes('sublocality_level_1') || comp.types.includes('sublocality')) && !mandalName) {
+                mandalName = comp.long_name;
+              }
             }
           }
         }
@@ -53,101 +54,117 @@ export async function POST(request: NextRequest) {
 
     let matchedMandal: any = null;
 
-    if (stateName) {
-      // Find matching state in DB
+    const normalizedDistrict = districtName.replace(/district/gi, '').trim();
+    const normalizedMandal = mandalName.replace(/mandal/gi, '').trim();
+    const normalizedState = stateName.replace(/state/gi, '').trim();
+
+    // 1. Try matching District first by name (e.g. Visakhapatnam)
+    if (normalizedDistrict) {
+      const districtObj = await db.district.findFirst({
+        where: {
+          name: { contains: normalizedDistrict, mode: 'insensitive' },
+          isActive: true,
+          deletedAt: null,
+        },
+        include: { state: true },
+      });
+
+      if (districtObj) {
+        // Try finding specific mandal under matched district
+        if (normalizedMandal) {
+          matchedMandal = await db.mandal.findFirst({
+            where: {
+              districtId: districtObj.id,
+              name: { contains: normalizedMandal, mode: 'insensitive' },
+              isActive: true,
+              deletedAt: null,
+            },
+            include: {
+              district: { include: { state: true } },
+              assembly: true,
+            },
+          });
+        }
+
+        // Fallback within the same matched district
+        if (!matchedMandal) {
+          matchedMandal = await db.mandal.findFirst({
+            where: {
+              districtId: districtObj.id,
+              isActive: true,
+              deletedAt: null,
+            },
+            include: {
+              district: { include: { state: true } },
+              assembly: true,
+            },
+          });
+        }
+      }
+    }
+
+    // 2. Try matching Mandal directly by name if not yet matched
+    if (!matchedMandal && normalizedMandal) {
+      matchedMandal = await db.mandal.findFirst({
+        where: {
+          name: { contains: normalizedMandal, mode: 'insensitive' },
+          isActive: true,
+          deletedAt: null,
+        },
+        include: {
+          district: { include: { state: true } },
+          assembly: true,
+        },
+      });
+    }
+
+    // 3. Try matching State if still not matched
+    if (!matchedMandal && normalizedState) {
       const stateObj = await db.state.findFirst({
         where: {
-          name: { contains: stateName, mode: 'insensitive' },
+          OR: [
+            { name: { contains: normalizedState, mode: 'insensitive' } },
+            { code: { equals: normalizedState, mode: 'insensitive' } },
+          ],
           isActive: true,
           deletedAt: null,
         },
       });
 
       if (stateObj) {
-        // Find matching district under the state
-        let districtObj: any = null;
-        if (districtName) {
-          const normalizedDistrict = districtName.replace(/district/gi, '').trim();
-          districtObj = await db.district.findFirst({
-            where: {
-              stateId: stateObj.id,
-              name: { contains: normalizedDistrict, mode: 'insensitive' },
-              isActive: true,
-              deletedAt: null,
-            },
-          });
-        }
-
-        if (districtObj) {
-          // Find matching mandal under the district
-          if (mandalName) {
-            const normalizedMandal = mandalName.replace(/mandal/gi, '').trim();
-            matchedMandal = await db.mandal.findFirst({
-              where: {
-                districtId: districtObj.id,
-                name: { contains: normalizedMandal, mode: 'insensitive' },
-                isActive: true,
-                deletedAt: null,
-              },
-              include: {
-                district: {
-                  include: {
-                    state: true,
-                  },
-                },
-                assembly: true,
-              },
-            });
-          }
-
-          // Fallback: Use the first available mandal in the matched district
-          if (!matchedMandal) {
-            matchedMandal = await db.mandal.findFirst({
-              where: {
-                districtId: districtObj.id,
-                isActive: true,
-                deletedAt: null,
-              },
-              include: {
-                district: {
-                  include: {
-                    state: true,
-                  },
-                },
-                assembly: true,
-              },
-            });
-          }
-        }
+        matchedMandal = await db.mandal.findFirst({
+          where: {
+            district: { stateId: stateObj.id },
+            isActive: true,
+            deletedAt: null,
+          },
+          include: {
+            district: { include: { state: true } },
+            assembly: true,
+          },
+        });
       }
     }
 
-    // Fallback: If geocoding failed or returned no matches, compute a fallback mandal deterministically
+    // 4. Ultimate fallback: First active mandal in DB (or matching active state)
     if (!matchedMandal) {
-      const mandals = await db.mandal.findMany({
+      matchedMandal = await db.mandal.findFirst({
         where: { isActive: true, deletedAt: null },
         include: {
-          district: {
-            include: {
-              state: true,
-            },
-          },
+          district: { include: { state: true } },
           assembly: true,
         },
       });
+    }
 
-      if (mandals.length === 0) {
-        return NextResponse.json({ error: 'No location records found in database' }, { status: 404 })
-      }
-
-      const index = Math.abs(Math.floor((latitude + longitude) * 10)) % mandals.length
-      matchedMandal = mandals[index]
+    if (!matchedMandal) {
+      return NextResponse.json({ error: 'No location records found in database' }, { status: 404 });
     }
 
     // Find first village belonging to the matched mandal
     const village = await db.village.findFirst({
       where: { mandalId: matchedMandal.id, isActive: true, deletedAt: null },
-    })
+    });
 
     return NextResponse.json({
       success: true,

@@ -33,10 +33,11 @@ export function rankAndMixArticles(
     const hoursOld = (Date.now() - publishedTime) / (1000 * 60 * 60);
     score += 50 * Math.pow(0.5, Math.max(0, hoursOld) / 12);
 
-    // Editorial priority
-    if (art.priority === 'breaking' || art.isBreaking === true) {
+    // Editorial priority - Breaking news & features boost applies ONLY for 24 hours after posting
+    const isWithin24Hours = hoursOld <= 24;
+    if ((art.priority === 'breaking' || art.isBreaking === true) && isWithin24Hours) {
       score += 100;
-    } else if (art.priority === 'high') {
+    } else if (art.priority === 'high' && isWithin24Hours) {
       score += 30;
     }
 

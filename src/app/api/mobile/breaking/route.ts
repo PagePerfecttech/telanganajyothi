@@ -3,12 +3,14 @@ import { db } from '@/lib/db'
 
 export async function GET() {
   try {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
     const breaking = await db.news.findMany({
       where: {
         priority: 'breaking',
         status: 'published',
         deletedAt: null,
-        expiresAt: { gte: new Date() },
+        publishedAt: { gte: twentyFourHoursAgo },
       },
       select: {
         id: true,
