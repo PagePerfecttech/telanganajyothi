@@ -100,6 +100,15 @@ export async function GET(request: NextRequest) {
       baseWhere.categoryId = category
     }
 
+    // Filter by location if explicitly requested via query params (e.g. from Location Tab)
+    if (mandalId) {
+      baseWhere.mandalId = mandalId
+    } else if (districtId) {
+      baseWhere.districtId = districtId
+    } else if (stateId) {
+      baseWhere.stateId = stateId
+    }
+
     const selectFields = {
       id: true,
       title: true,
