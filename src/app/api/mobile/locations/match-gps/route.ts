@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
     let districtName = '';
     let mandalName = '';
 
+    // 1. Try Google Maps Geocoding
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
     if (apiKey) {
       try {
@@ -52,13 +53,32 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 2. OpenStreetMap Nominatim Geocoding Fallback if components empty
+    if (!stateName || !districtName) {
+      try {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14`;
+        const res = await fetch(url, {
+          headers: { 'User-Agent': 'TelanganaJyothiApp/1.0' }
+        });
+        const data = await res.json();
+        if (data && data.address) {
+          const addr = data.address;
+          if (!stateName) stateName = addr.state || addr.region || '';
+          if (!districtName) districtName = addr.state_district || addr.county || addr.district || addr.city || '';
+          if (!mandalName) mandalName = addr.suburb || addr.town || addr.village || addr.municipality || addr.city_district || '';
+        }
+      } catch (e) {
+        console.error('OSM Geocoding API fetch error:', e);
+      }
+    }
+
     let matchedMandal: any = null;
 
     const normalizedDistrict = districtName.replace(/district/gi, '').trim();
     const normalizedMandal = mandalName.replace(/mandal/gi, '').trim();
     const normalizedState = stateName.replace(/state/gi, '').trim();
 
-    // 1. Try matching District first by name (e.g. Visakhapatnam)
+    // 1. Try matching District first by name (e.g. Visakhapatnam, West Godavari, East Godavari, Hyderabad)
     if (normalizedDistrict) {
       const districtObj = await db.district.findFirst({
         where: {
@@ -146,7 +166,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4. Ultimate fallback: First active mandal in DB (or matching active state)
+    // 4. Fallback: First active mandal in DB
     if (!matchedMandal) {
       matchedMandal = await db.mandal.findFirst({
         where: { isActive: true, deletedAt: null },
