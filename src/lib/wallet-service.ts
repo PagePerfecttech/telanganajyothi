@@ -13,8 +13,8 @@ export async function processNewsApprovalEarning(newsId: string, isVideo: boolea
 
     const rewardSettingKey = isVideo ? 'REWARD_VIDEO' : 'REWARD_ARTICLE'
     const setting = await db.setting.findUnique({ where: { key: rewardSettingKey } })
-    // Default values if not set: Video=50, Article=10
-    const rewardAmount = setting ? parseInt(setting.value, 10) : (isVideo ? 50 : 10)
+    // Default values if not set: Video=50, Article=2
+    const rewardAmount = setting ? parseInt(setting.value, 10) : (isVideo ? 50 : 2)
 
     if (rewardAmount <= 0) return
 

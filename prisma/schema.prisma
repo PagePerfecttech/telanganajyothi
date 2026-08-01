@@ -256,6 +256,10 @@ model News {
   youtubePublishStatus String?        @map("youtube_publish_status")
   youtubeVideoId       String?        @map("youtube_video_id")
 
+  @@index([status, deletedAt, publishedAt(sort: Desc)])
+  @@index([status, deletedAt, categoryId, publishedAt(sort: Desc)])
+  @@index([status, deletedAt, districtId, publishedAt(sort: Desc)])
+  @@index([status, deletedAt, mandalId, publishedAt(sort: Desc)])
   @@index([status, publishedAt(sort: Desc), districtId])
   @@index([status, publishedAt(sort: Desc), categoryId])
   @@index([status, publishedAt(sort: Desc), assemblyId])

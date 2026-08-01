@@ -159,11 +159,14 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Coins for News Approval</Label>
+              <Label>Coins for Article/News Approval (per post)</Label>
               <Input 
                 type="number"
-                value={settings.NEWS_APPROVAL_COINS || '10'} 
-                onChange={e => updateSetting('NEWS_APPROVAL_COINS', e.target.value)} 
+                value={settings.REWARD_ARTICLE || settings.NEWS_APPROVAL_COINS || '2'} 
+                onChange={e => {
+                  updateSetting('REWARD_ARTICLE', e.target.value)
+                  updateSetting('NEWS_APPROVAL_COINS', e.target.value)
+                }} 
               />
             </div>
             <div className="space-y-2">

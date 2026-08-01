@@ -146,17 +146,25 @@ export async function GET(request: NextRequest) {
 
     const offset = (page - 1) * limit;
 
-    // Fetch candidate articles matching filters (larger pool for personalized sorting)
-    const candidateLimit = Math.max(150, page * limit + 50);
-    const [candidates, total] = await Promise.all([
-      db.news.findMany({
-        where: baseWhere,
-        select: selectFields,
-        orderBy: { publishedAt: 'desc' },
-        take: candidateLimit,
-      }),
-      db.news.count({ where: baseWhere }),
-    ]);
+    // Fast In-Memory Cache Key for Page 1 requests (10s TTL)
+    const cacheKey = page === 1 ? `feed_p1_${mandalId || ''}_${districtId || ''}_${stateId || ''}_${category || ''}` : null;
+    if (cacheKey && (global as any)._feedCache?.[cacheKey]) {
+      const cachedEntry = (global as any)._feedCache[cacheKey];
+      if (Date.now() < cachedEntry.expiresAt) {
+        return NextResponse.json(cachedEntry.data);
+      }
+    }
+
+    // Fetch candidate articles matching filters (tuned limit for fast DB performance)
+    const candidateLimit = page === 1 ? Math.min(40, limit * 4) : Math.min(100, page * limit + 30);
+    const candidates = await db.news.findMany({
+      where: baseWhere,
+      select: selectFields,
+      orderBy: { publishedAt: 'desc' },
+      take: candidateLimit,
+    });
+
+    const total = candidates.length >= candidateLimit ? candidateLimit + 10 : candidates.length + offset;
 
     const userLocation = {
       stateId: finalStateId,
@@ -209,7 +217,13 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ feed, total, page, limit })
+    const responsePayload = { feed, total, page, limit };
+    if (cacheKey) {
+      if (!(global as any)._feedCache) (global as any)._feedCache = {};
+      (global as any)._feedCache[cacheKey] = { data: responsePayload, expiresAt: Date.now() + 15000 };
+    }
+
+    return NextResponse.json(responsePayload)
   } catch (error) {
     console.error('Feed error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -75,6 +75,22 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Also update Reporter record if user is a reporter
+    const existingReporter = await db.reporter.findUnique({ where: { phone } });
+    if (existingReporter) {
+      await db.reporter.update({
+        where: { id: existingReporter.id },
+        data: {
+          name: data.name || existingReporter.name,
+          email: data.email !== undefined ? data.email : existingReporter.email,
+          avatar: data.avatar !== undefined ? data.avatar : existingReporter.avatar,
+          stateId: data.stateId || existingReporter.stateId,
+          districtId: data.districtId || existingReporter.districtId,
+          mandalId: data.mandalId !== undefined ? data.mandalId : existingReporter.mandalId,
+        }
+      });
+    }
+
     return NextResponse.json({
       ...user,
       preferredCategories: safeJsonParse<string[]>(user.preferredCategories, [])

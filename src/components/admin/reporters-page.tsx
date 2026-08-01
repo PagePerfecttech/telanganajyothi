@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, UserCheck, UserX } from 'lucide-react'
+import { Plus, Pencil, Trash2, UserCheck, UserX, Eye, ExternalLink, ShieldCheck } from 'lucide-react'
 import { authFetch, authFetchJSON, authFetchJson } from '@/lib/utils'
 
 interface ReporterItem {
@@ -21,6 +21,7 @@ interface ReporterItem {
   phone: string
   email: string | null
   avatar: string | null
+  idProofUrl?: string | null
   bio: string | null
   stateId: string
   districtId: string
@@ -52,9 +53,10 @@ export default function ReportersPage() {
   const [mandals, setMandals] = useState<Mandal[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [viewModalItem, setViewModalItem] = useState<ReporterItem | null>(null)
   const [editItem, setEditItem] = useState<ReporterItem | null>(null)
   const [form, setForm] = useState<Record<string, unknown>>({
-    name: '', phone: '', email: '', avatar: '', bio: '',
+    name: '', phone: '', email: '', avatar: '', idProofUrl: '', bio: '',
     stateId: '', districtId: '', mandalId: '', beat: '', status: 'pending', canPublishDirectly: false,
   })
 
@@ -108,8 +110,8 @@ export default function ReportersPage() {
     setEditItem(item)
     setForm({
       name: item.name, phone: item.phone, email: item.email || '', avatar: item.avatar || '',
-      bio: item.bio || '', stateId: item.stateId, districtId: item.districtId, mandalId: item.mandalId || '',
-      beat: item.beat || '', status: item.status, canPublishDirectly: item.canPublishDirectly,
+      idProofUrl: item.idProofUrl || '', bio: item.bio || '', stateId: item.stateId, districtId: item.districtId,
+      mandalId: item.mandalId || '', beat: item.beat || '', status: item.status, canPublishDirectly: item.canPublishDirectly,
     })
     setDialogOpen(true)
   }
@@ -123,7 +125,7 @@ export default function ReportersPage() {
         </div>
         <Button className="bg-red-600 hover:bg-red-700" onClick={() => {
           setEditItem(null)
-          setForm({ name: '', phone: '', email: '', avatar: '', bio: '', stateId: '', districtId: '', mandalId: '', beat: '', status: 'pending', canPublishDirectly: false })
+          setForm({ name: '', phone: '', email: '', avatar: '', idProofUrl: '', bio: '', stateId: '', districtId: '', mandalId: '', beat: '', status: 'pending', canPublishDirectly: false })
           setDialogOpen(true)
         }}>
           <Plus className="h-4 w-4 mr-2" /> Add Reporter
@@ -145,6 +147,7 @@ export default function ReportersPage() {
                     <TableHead>District</TableHead>
                     <TableHead>Mandal</TableHead>
                     <TableHead>Beat</TableHead>
+                    <TableHead>ID Proof</TableHead>
                     <TableHead>Submissions</TableHead>
                     <TableHead>Coins</TableHead>
                     <TableHead>Can Publish</TableHead>
@@ -173,12 +176,22 @@ export default function ReportersPage() {
                       <TableCell className="text-sm">{r.district?.name || '-'}</TableCell>
                       <TableCell className="text-sm">{r.mandal?.name || '-'}</TableCell>
                       <TableCell><Badge variant="outline">{r.beat || 'General'}</Badge></TableCell>
+                      <TableCell>
+                        {r.idProofUrl ? (
+                          <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 h-7 text-xs" onClick={() => setViewModalItem(r)}>
+                            <ShieldCheck className="h-3.5 w-3.5 mr-1" /> View ID
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">None</span>
+                        )}
+                      </TableCell>
                       <TableCell>{r._count?.news || 0}</TableCell>
                       <TableCell className="font-semibold text-amber-600">{r.coinsBalance || 0}</TableCell>
                       <TableCell>{r.canPublishDirectly ? <UserCheck className="h-4 w-4 text-green-600" /> : <UserX className="h-4 w-4 text-gray-400" />}</TableCell>
                       <TableCell><Badge className={statusColors[r.status] || ''}>{r.status}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center gap-1 justify-end">
+                          <Button size="icon" variant="ghost" title="View Full Details" onClick={() => setViewModalItem(r)}><Eye className="h-4 w-4 text-blue-600" /></Button>
                           <Button size="icon" variant="ghost" onClick={() => openEdit(r)}><Pencil className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" className="text-red-600" onClick={() => handleDelete(r.id)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
@@ -192,6 +205,61 @@ export default function ReportersPage() {
         </CardContent>
       </Card>
 
+      {/* ID Proof & Reporter Details Modal */}
+      <Dialog open={!!viewModalItem} onOpenChange={() => setViewModalItem(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <ShieldCheck className="h-5 w-5 text-blue-600" /> Reporter Verification & ID Proof Details
+            </DialogTitle>
+          </DialogHeader>
+          {viewModalItem && (
+            <div className="space-y-6 my-2">
+              <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border">
+                {viewModalItem.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={viewModalItem.avatar} alt={viewModalItem.name} className="w-16 h-16 rounded-full object-cover border-2 border-red-500 shadow-sm" />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold text-xl uppercase">
+                    {viewModalItem.name.charAt(0)}
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-lg font-bold">{viewModalItem.name}</h3>
+                  <p className="text-sm text-gray-600">{viewModalItem.phone} • {viewModalItem.email || 'No email'}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Location: {viewModalItem.mandal?.name ? `${viewModalItem.mandal.name}, ` : ''}{viewModalItem.district?.name || '-'}, {viewModalItem.state?.name || '-'}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-sm font-semibold mb-2 block">Submitted ID Proof Document / Photo:</Label>
+                {viewModalItem.idProofUrl ? (
+                  <div className="border rounded-xl p-3 bg-white space-y-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={viewModalItem.idProofUrl} alt="Reporter ID Proof" className="max-h-72 w-full object-contain rounded-lg bg-gray-900/5 border" />
+                    <div className="flex justify-end">
+                      <a href={viewModalItem.idProofUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs font-semibold text-blue-600 hover:underline gap-1">
+                        Open Full Resolution ID Proof <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center border border-dashed rounded-xl text-gray-400 bg-gray-50">
+                    No ID Proof document uploaded by this reporter yet.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setViewModalItem(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit/Create Reporter Modal */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-xl">
           <DialogHeader><DialogTitle>{editItem ? 'Edit Reporter' : 'Add Reporter'}</DialogTitle></DialogHeader>
@@ -204,6 +272,7 @@ export default function ReportersPage() {
               <div className="space-y-2"><Label>Email</Label><Input type="email" value={form.email as string} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
               <div className="space-y-2"><Label>Avatar URL</Label><Input value={form.avatar as string} onChange={e => setForm(p => ({ ...p, avatar: e.target.value }))} /></div>
             </div>
+            <div className="space-y-2"><Label>ID Proof Document URL</Label><Input value={form.idProofUrl as string} onChange={e => setForm(p => ({ ...p, idProofUrl: e.target.value }))} placeholder="https://..." /></div>
             <div className="space-y-2"><Label>Bio</Label><Textarea value={form.bio as string} onChange={e => setForm(p => ({ ...p, bio: e.target.value }))} rows={2} /></div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">

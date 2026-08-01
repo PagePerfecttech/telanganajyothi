@@ -50,6 +50,10 @@ export async function POST(request: NextRequest) {
 
     const moneyAmount = coins * conversionRate
 
+    if (moneyAmount < 1000) {
+      return NextResponse.json({ error: 'Minimum withdrawal amount is ₹1,000' }, { status: 400 })
+    }
+
     const withdrawal = await db.$transaction(async (tx) => {
       // Create request
       const req = await tx.withdrawalRequest.create({

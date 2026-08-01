@@ -5,18 +5,25 @@ import { s3Client, R2_BUCKET, R2_PUBLIC_URL } from '@/lib/r2'
 import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { processNewsApprovalEarning } from '@/lib/wallet-service'
 
+import { applyWatermark } from '@/lib/watermark'
+
 async function uploadFileToR2(file: File, prefix: string): Promise<string> {
   const timestamp = Date.now()
   const randomStr = Math.random().toString(36).substring(2, 8)
   const ext = file.name.split('.').pop() || 'jpg'
   const filename = `${prefix}-${timestamp}-${randomStr}.${ext}`
-  const buffer = Buffer.from(await file.arrayBuffer())
+  let buffer: any = Buffer.from(await file.arrayBuffer())
+
+  // Apply light SPOT NEWS watermark to image uploads
+  if (file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp'].includes(ext.toLowerCase())) {
+    buffer = await applyWatermark(buffer, file.type || 'image/jpeg');
+  }
   
   await s3Client.send(
     new PutObjectCommand({
       Bucket: R2_BUCKET,
       Key: filename,
-      Body: buffer,
+      Body: buffer as any,
       ContentType: file.type || 'application/octet-stream',
     })
   )
