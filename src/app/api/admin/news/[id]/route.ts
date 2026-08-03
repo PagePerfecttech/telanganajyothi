@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { verifyAuth } from '@/lib/auth'
 import { safeJsonParse, safeJsonStringify } from '@/lib/json-utils'
 import { processNewsApprovalEarning } from '@/lib/wallet-service'
+import { processNewsRejectionScore } from '@/lib/scoring-service'
 import { uploadToYouTubeShorts } from '@/lib/youtube-service'
 import { messaging } from '@/lib/firebase-admin'
 
@@ -193,6 +194,10 @@ export async function PATCH(
         changes: JSON.stringify({ status: data.status, rejectReason: data.rejectReason }),
       },
     })
+
+    if (data.status === 'rejected' && news.reporterId) {
+      await processNewsRejectionScore(news.reporterId)
+    }
 
     if (data.status === 'published' && !wasPublished) {
       const isVideo = !!(news.videoUrl)

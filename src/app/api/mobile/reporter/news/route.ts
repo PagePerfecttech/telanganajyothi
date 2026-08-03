@@ -4,6 +4,7 @@ import { verifyFirebaseToken } from '@/lib/firebase-admin'
 import { s3Client, R2_BUCKET, R2_PUBLIC_URL } from '@/lib/r2'
 import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { processNewsApprovalEarning } from '@/lib/wallet-service'
+import { generateAINewsRewrite } from '@/lib/gemini-service'
 
 import { applyWatermark } from '@/lib/watermark'
 
@@ -147,6 +148,35 @@ export async function POST(request: NextRequest) {
     if (!title || !categoryId) {
        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
+
+    // Daily posting limit check (Crime category exempt)
+    const category = await db.category.findUnique({ where: { id: categoryId } })
+    const isCrimeCategory = category?.name?.toLowerCase().includes('crime') || category?.slug?.toLowerCase().includes('crime')
+
+    if (!isCrimeCategory) {
+      const isSenior = reporter.role === 'senior' || reporter.canPublishDirectly
+      const limitKey = isSenior ? 'limit_senior_daily' : 'limit_junior_daily'
+      const defaultLimit = isSenior ? 10 : 5
+      const setting = await db.setting.findUnique({ where: { key: limitKey } })
+      const maxDailyLimit = setting ? parseInt(setting.value, 10) : defaultLimit
+
+      const startOfDay = new Date()
+      startOfDay.setHours(0, 0, 0, 0)
+
+      const todaySubmissionsCount = await db.news.count({
+        where: {
+          reporterId: reporter.id,
+          createdAt: { gte: startOfDay },
+          deletedAt: null,
+        },
+      })
+
+      if (todaySubmissionsCount >= maxDailyLimit) {
+        return NextResponse.json({
+          error: `Daily submission limit reached (${maxDailyLimit} news/day for ${isSenior ? 'Senior' : 'Junior'} Reporters). Crime news is exempt from limits.`,
+        }, { status: 429 })
+      }
+    }
     
     // Force the news location to match the reporter's allotted location
     stateId = reporter.stateId || stateId;
@@ -208,6 +238,21 @@ export async function POST(request: NextRequest) {
     if (reporter.canPublishDirectly) {
       await processNewsApprovalEarning(news.id, !!videoUrl)
     }
+
+    // Trigger async Gemini AI rewrite for professional headline & content suggestions
+    generateAINewsRewrite(title, shortDesc || '', shortDesc || undefined).then((aiResult) => {
+      if (aiResult) {
+        db.news.update({
+          where: { id: news.id },
+          data: {
+            aiTitle: aiResult.aiTitle,
+            aiShortDesc: aiResult.aiShortDesc,
+            aiContent: aiResult.aiContent,
+            aiStatus: 'generated',
+          },
+        }).catch((err) => console.error('Failed to save AI news rewrite:', err))
+      }
+    }).catch((err) => console.error('AI news generation error:', err))
 
     return NextResponse.json({ message: 'News submitted successfully', news })
   } catch (error) {

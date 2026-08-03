@@ -1,9 +1,16 @@
 import { db } from './db'
+import { processNewsApprovalScore, getSettingNumber } from './scoring-service'
 
-export async function processNewsApprovalEarning(newsId: string, isVideo: boolean) {
+export async function processNewsApprovalEarning(newsId: string, isVideo: boolean = false) {
   try {
-    const news = await db.news.findUnique({ where: { id: newsId } })
-    if (!news || !news.reporterId) return
+    const news = await db.news.findUnique({
+      where: { id: newsId },
+      include: { reporter: true }
+    })
+    if (!news || !news.reporterId || !news.reporter) return
+
+    const reporter = news.reporter
+    const isSenior = reporter.role === 'senior' || reporter.canPublishDirectly
 
     // Ensure we don't reward multiple times for the same news
     const existingTransaction = await db.walletTransaction.findFirst({
@@ -11,46 +18,38 @@ export async function processNewsApprovalEarning(newsId: string, isVideo: boolea
     })
     if (existingTransaction) return
 
-    const rewardSettingKey = isVideo ? 'REWARD_VIDEO' : 'REWARD_ARTICLE'
-    const setting = await db.setting.findUnique({ where: { key: rewardSettingKey } })
-    // Default values if not set: Video=50, Article=2
-    const rewardAmount = setting ? parseInt(setting.value, 10) : (isVideo ? 50 : 2)
+    // Calculate reward in Rupees (₹) based on reporter level
+    const rewardKey = isSenior ? 'reward_senior_article' : 'reward_junior_article'
+    const defaultReward = isSenior ? 5 : 2
+    const rewardAmount = await getSettingNumber(rewardKey, defaultReward)
 
     if (rewardAmount <= 0) return
 
-    // Run transaction
+    // Run transaction: update earnings balance and log transaction
     await db.$transaction([
       db.walletTransaction.create({
         data: {
           reporterId: news.reporterId,
-          amount: rewardAmount,
+          amount: Math.round(rewardAmount),
           type: 'CREDIT',
-          description: `Reward for approved ${isVideo ? 'video' : 'article'} news: ${news.title}`,
+          description: `Reward for approved ${isSenior ? 'Senior' : 'Junior'} news article (₹${rewardAmount}): ${news.title}`,
           referenceId: newsId,
         }
       }),
       db.reporter.update({
         where: { id: news.reporterId },
         data: {
-          coinsBalance: { increment: rewardAmount }
+          earningsBalance: { increment: rewardAmount },
+          coinsBalance: { increment: Math.round(rewardAmount) },
         }
       })
     ])
 
-    console.log(`Credited ${rewardAmount} coins to reporter ${news.reporterId} for news ${newsId}`)
+    // Update performance score (+10) and check promotion eligibility
+    await processNewsApprovalScore(news.reporterId)
+
+    console.log(`Credited ₹${rewardAmount} and +10 score to reporter ${news.reporterId} (${reporter.name}) for news ${newsId}`)
   } catch (error) {
     console.error('Error processing earning for news approval:', error)
-  }
-}
-
-export async function processVideoApprovalEarning(videoId: string) {
-  try {
-    // Currently, standard videos don't have reporterId in schema, but if they are tied to reporters later, add logic here.
-    // For now, if videos are uploaded by admins, no reward. If they are linked to reporters, add here.
-    const video = await db.video.findUnique({ where: { id: videoId } })
-    if (!video) return
-    // Schema Video model doesn't have reporterId, only News does right now.
-  } catch (error) {
-    console.error('Error processing earning for video approval:', error)
   }
 }

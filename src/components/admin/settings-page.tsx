@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Settings, Shield, Wrench, MessageSquare, Moon, Video as VideoIcon, Bell, Bookmark, Share, Save, Megaphone, Youtube, Coins } from 'lucide-react'
+import { Settings, Shield, Wrench, MessageSquare, Moon, Video as VideoIcon, Bell, Bookmark, Share, Save, Megaphone, Youtube, Coins, Trash2, Clock, Sparkles } from 'lucide-react'
 import { authFetch, authFetchJSON, authFetchJson } from '@/lib/utils'
 
 export default function SettingsPage() {
@@ -41,6 +41,32 @@ export default function SettingsPage() {
 
   const updateSetting = (key: string, value: string) => {
     setSettings(prev => ({ ...prev, [key]: value }))
+  }
+
+  const [runningCleanup, setRunningCleanup] = useState(false)
+
+  const handleManualCleanup = async () => {
+    const days = parseInt(settings.auto_delete_days || '0', 10)
+    if (isNaN(days) || days <= 0) {
+      toast.error('Please set Auto Delete Days greater than 0 first')
+      return
+    }
+    setRunningCleanup(true)
+    try {
+      const res = await authFetchJson<{ success: boolean; message: string }>('/api/admin/news/auto-delete', {
+        method: 'POST',
+        body: JSON.stringify({ days }),
+      })
+      if (res.success) {
+        toast.success(res.message)
+      } else {
+        toast.error('Auto-delete cleanup failed')
+      }
+    } catch {
+      toast.error('Failed to run auto-delete cleanup')
+    } finally {
+      setRunningCleanup(false)
+    }
   }
 
   if (loading) {
@@ -248,6 +274,177 @@ export default function SettingsPage() {
                 <div className="space-y-2"><Label>Click Link URL</Label><Input value={settings.custom_banner_link_url || ''} onChange={e => updateSetting('custom_banner_link_url', e.target.value)} placeholder="https://..." /></div>
               </div>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Reporter Level, Rewards & Performance Thresholds */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Coins className="h-5 w-5 text-red-600" /> Reporter Level, Rewards & Scoring Thresholds
+          </CardTitle>
+          <CardDescription>
+            Configure reward rates per approved article (₹), daily submission limits, and promotion score thresholds.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="font-semibold text-sm text-gray-700">Junior Reporter Reward (₹ / article)</Label>
+              <Input
+                type="number"
+                value={settings.reward_junior_article || '2'}
+                onChange={e => updateSetting('reward_junior_article', e.target.value)}
+                placeholder="2"
+              />
+              <p className="text-xs text-muted-foreground">Default ₹2 per approved article</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="font-semibold text-sm text-gray-700">Senior Reporter Reward (₹ / article)</Label>
+              <Input
+                type="number"
+                value={settings.reward_senior_article || '5'}
+                onChange={e => updateSetting('reward_senior_article', e.target.value)}
+                placeholder="5"
+              />
+              <p className="text-xs text-muted-foreground">Default ₹5 per approved article</p>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="font-semibold text-sm text-gray-700">Junior Daily Approved Limit</Label>
+              <Input
+                type="number"
+                value={settings.limit_junior_daily || '5'}
+                onChange={e => updateSetting('limit_junior_daily', e.target.value)}
+                placeholder="5"
+              />
+              <p className="text-xs text-muted-foreground">Max news submissions per day for Junior Reporters (Crime exempt)</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="font-semibold text-sm text-gray-700">Senior Daily Approved Limit</Label>
+              <Input
+                type="number"
+                value={settings.limit_senior_daily || '10'}
+                onChange={e => updateSetting('limit_senior_daily', e.target.value)}
+                placeholder="10"
+              />
+              <p className="text-xs text-muted-foreground">Max news submissions per day for Senior Reporters (Crime exempt)</p>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label className="font-semibold text-sm text-gray-700">Promotion Score Threshold</Label>
+              <Input
+                type="number"
+                value={settings.promotion_score_threshold || '100'}
+                onChange={e => updateSetting('promotion_score_threshold', e.target.value)}
+                placeholder="100"
+              />
+              <p className="text-xs text-muted-foreground">Min Performance Score for Senior promotion eligibility</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="font-semibold text-sm text-gray-700">Min Approved Articles</Label>
+              <Input
+                type="number"
+                value={settings.promotion_min_approved || '100'}
+                onChange={e => updateSetting('promotion_min_approved', e.target.value)}
+                placeholder="100"
+              />
+              <p className="text-xs text-muted-foreground">Min approved articles for Senior promotion eligibility</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="font-semibold text-sm text-gray-700">Demotion Score Threshold</Label>
+              <Input
+                type="number"
+                value={settings.demotion_score_threshold || '40'}
+                onChange={e => updateSetting('demotion_score_threshold', e.target.value)}
+                placeholder="40"
+              />
+              <p className="text-xs text-muted-foreground">Score below which system recommends demotion</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Google Gemini AI Article Writing & Suggestions */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-purple-600" /> Google Gemini AI Article Writing & Suggestions
+          </CardTitle>
+          <CardDescription>
+            Configure Google Gemini API key to automatically rewrite reporter submissions into professional Telugu news articles with suggested change approval.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label className="font-semibold text-sm text-gray-700">Gemini API Key</Label>
+            <Input
+              type="password"
+              value={settings.gemini_api_key || ''}
+              onChange={e => updateSetting('gemini_api_key', e.target.value)}
+              placeholder="AIzaSy..."
+            />
+            <p className="text-xs text-muted-foreground">
+              Obtain your free API key from Google AI Studio (aistudio.google.com). Powers automatic professional Telugu headline & article rewrites.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Auto Delete News & Media Retention */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Trash2 className="h-5 w-5 text-red-600" /> Auto Delete News & Media Retention
+          </CardTitle>
+          <CardDescription>
+            Automatically purge old news articles and clean up associated media files (images, thumbnails, uploaded videos) from server storage.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5 font-medium">
+                <Clock className="h-4 w-4 text-muted-foreground" /> Retention Threshold (Days Count)
+              </Label>
+              <select
+                className="w-full border rounded-md p-2 text-sm bg-background"
+                value={settings.auto_delete_days || '0'}
+                onChange={e => updateSetting('auto_delete_days', e.target.value)}
+              >
+                <option value="0">Disabled (Keep all news forever)</option>
+                <option value="7">7 Days (Delete news older than 1 week)</option>
+                <option value="15">15 Days (Delete news older than 15 days)</option>
+                <option value="30">30 Days (Delete news older than 1 month)</option>
+                <option value="60">60 Days (Delete news older than 2 months)</option>
+                <option value="90">90 Days (Delete news older than 3 months)</option>
+                <option value="180">180 Days (Delete news older than 6 months)</option>
+                <option value="365">365 Days (Delete news older than 1 year)</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Set to 0 to disable. When set, posts older than this number of days will be deleted along with all their media files.
+              </p>
+            </div>
+            <div className="flex justify-start md:justify-end">
+              <Button
+                variant="outline"
+                className="border-red-200 text-red-600 hover:bg-red-50 font-semibold"
+                onClick={handleManualCleanup}
+                disabled={runningCleanup || !settings.auto_delete_days || settings.auto_delete_days === '0'}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {runningCleanup ? 'Cleaning up...' : 'Run Cleanup Now'}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

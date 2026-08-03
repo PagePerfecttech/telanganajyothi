@@ -12,6 +12,7 @@ export type ViewType =
   | 'tags'
   | 'ads'
   | 'reporters'
+  | 'reporter-performance'
   | 'users'
   | 'admins'
   | 'notifications'

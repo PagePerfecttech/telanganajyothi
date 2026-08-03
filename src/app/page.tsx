@@ -19,6 +19,7 @@ import SettingsPage from '@/components/admin/settings-page'
 import MediaPage from '@/components/admin/media-page'
 import AuditLogsPage from '@/components/admin/audit-logs-page'
 import WithdrawalsPage from '@/components/admin/withdrawals-page'
+import ReporterPerformancePage from '@/components/admin/reporter-performance-page'
 
 const moduleComponents: Record<ViewType, React.ComponentType> = {
   dashboard: DashboardPage,
@@ -29,6 +30,7 @@ const moduleComponents: Record<ViewType, React.ComponentType> = {
   tags: TagsPage,
   ads: AdsPage,
   reporters: ReportersPage,
+  'reporter-performance': ReporterPerformancePage,
   users: UsersPage,
   admins: AdminsPage,
   notifications: NotificationsPage,

@@ -19,7 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Search, CheckCircle, XCircle, Upload, X, ImageIcon, ArrowLeft, Save, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, CheckCircle, XCircle, Upload, X, ImageIcon, ArrowLeft, Save, Loader2, Sparkles } from 'lucide-react'
 
 interface NewsItem {
   id: string
@@ -436,6 +436,16 @@ function NewsFormPage({
   const [saving, setSaving] = useState(false)
   const [pageLoading, setPageLoading] = useState(!!editItemId)
 
+  // Gemini AI state
+  const [aiState, setAiState] = useState<{
+    aiTitle?: string | null
+    aiShortDesc?: string | null
+    aiContent?: string | null
+    aiStatus?: string | null
+  }>({})
+  const [generatingAI, setGeneratingAI] = useState(false)
+  const [actingAI, setActingAI] = useState(false)
+
   // Crop state
   const [cropModalOpen, setCropModalOpen] = useState(false)
   const [imageToCrop, setImageToCrop] = useState<string | null>(null)
@@ -478,6 +488,12 @@ function NewsFormPage({
             sendNotification: data.sendNotification !== false,
             tagIds,
           })
+          setAiState({
+            aiTitle: (data.aiTitle as string) || null,
+            aiShortDesc: (data.aiShortDesc as string) || null,
+            aiContent: (data.aiContent as string) || null,
+            aiStatus: (data.aiStatus as string) || null,
+          })
           setLoaded(true)
           setPageLoading(false)
         })
@@ -490,6 +506,76 @@ function NewsFormPage({
       setPageLoading(false)
     }
   }, [editItemId, loaded])
+
+  const handleGenerateAIRewrite = async () => {
+    if (!editItemId) {
+      toast.error('Please save the article first before generating AI rewrite')
+      return
+    }
+    setGeneratingAI(true)
+    try {
+      const res = await authFetch(`/api/admin/news/${editItemId}/ai-rewrite`, { method: 'POST' })
+      const data = await res.json()
+      if (res.ok && data.news) {
+        setAiState({
+          aiTitle: data.news.aiTitle,
+          aiShortDesc: data.news.aiShortDesc,
+          aiContent: data.news.aiContent,
+          aiStatus: data.news.aiStatus,
+        })
+        toast.success('✨ AI Rewrite generated successfully!')
+      } else {
+        toast.error(data.error || 'Failed to generate AI rewrite')
+      }
+    } catch {
+      toast.error('AI Rewrite generation failed')
+    } finally {
+      setGeneratingAI(false)
+    }
+  }
+
+  const handleApplyAISuggestions = async () => {
+    if (!aiState.aiTitle) return
+    setActingAI(true)
+    try {
+      updateField('title', aiState.aiTitle)
+      if (aiState.aiShortDesc) updateField('shortDesc', aiState.aiShortDesc)
+      if (aiState.aiContent) updateField('content', aiState.aiContent)
+
+      if (editItemId) {
+        await authFetch(`/api/admin/news/${editItemId}/ai-rewrite`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'accept' }),
+        })
+      }
+      setAiState(prev => ({ ...prev, aiStatus: 'accepted' }))
+      toast.success('✨ Applied AI Suggestions to News Article!')
+    } catch {
+      toast.error('Failed to apply AI suggestions')
+    } finally {
+      setActingAI(false)
+    }
+  }
+
+  const handleDeclineAISuggestions = async () => {
+    setActingAI(true)
+    try {
+      if (editItemId) {
+        await authFetch(`/api/admin/news/${editItemId}/ai-rewrite`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'decline' }),
+        })
+      }
+      setAiState(prev => ({ ...prev, aiStatus: 'declined' }))
+      toast.info('AI Suggestions declined')
+    } catch {
+      toast.error('Failed to decline AI suggestions')
+    } finally {
+      setActingAI(false)
+    }
+  }
 
   const updateField = (key: string, value: unknown) => setForm(prev => ({ ...prev, [key]: value }))
 
@@ -703,6 +789,104 @@ function NewsFormPage({
         <div className="lg:col-span-2 space-y-6">
           <Card className="border-0 shadow-sm">
             <CardContent className="pt-6 space-y-5">
+              {/* Gemini AI Suggested Rewrite Card */}
+              <div className="rounded-xl border border-purple-200 dark:border-purple-900/50 bg-gradient-to-br from-purple-50/60 via-indigo-50/40 to-purple-50/30 dark:from-purple-950/30 dark:to-indigo-950/20 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-sm">
+                      <Sparkles className="h-4 w-4 animate-pulse" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-purple-950 dark:text-purple-200 flex items-center gap-1.5">
+                        Gemini AI Professional Rewrite Suggestions
+                        {aiState.aiStatus === 'accepted' && (
+                          <Badge className="bg-green-600 text-white text-[10px] px-1.5">Accepted</Badge>
+                        )}
+                        {aiState.aiStatus === 'declined' && (
+                          <Badge className="bg-gray-500 text-white text-[10px] px-1.5">Declined</Badge>
+                        )}
+                      </h4>
+                      <p className="text-xs text-purple-700/80 dark:text-purple-300/70">
+                        AI-crafted professional Telugu headline & journalistic prose
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerateAIRewrite}
+                    disabled={generatingAI || !editItemId}
+                    className="border-purple-300 text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-900/40 text-xs font-semibold"
+                  >
+                    {generatingAI ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        Writing with AI...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3.5 w-3.5 mr-1 text-purple-600" />
+                        {aiState.aiTitle ? 'Re-Generate AI' : 'Generate AI Rewrite'}
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {aiState.aiTitle ? (
+                  <div className="space-y-3 pt-2 border-t border-purple-200/60 dark:border-purple-900/40">
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                        Suggested Title (శీర్షిక):
+                      </span>
+                      <p className="text-sm font-bold text-gray-900 dark:text-gray-100 bg-white/90 dark:bg-gray-900/80 p-2.5 rounded-lg border border-purple-100 dark:border-purple-900/30">
+                        {aiState.aiTitle}
+                      </p>
+                    </div>
+
+                    {aiState.aiContent && (
+                      <div className="space-y-1">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                          Suggested Content (వివరణ):
+                        </span>
+                        <div className="text-xs text-gray-700 dark:text-gray-300 bg-white/90 dark:bg-gray-900/80 p-3 rounded-lg border border-purple-100 dark:border-purple-900/30 max-h-40 overflow-y-auto whitespace-pre-wrap">
+                          {aiState.aiContent}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleApplyAISuggestions}
+                        disabled={actingAI}
+                        className="bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs flex-1"
+                      >
+                        {actingAI ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
+                        Apply AI Suggestions to News
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleDeclineAISuggestions}
+                        disabled={actingAI}
+                        className="text-gray-500 hover:text-gray-700 text-xs"
+                      >
+                        Decline
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-purple-600/80 italic pt-1">
+                    {editItemId
+                      ? 'No AI rewrite generated yet. Click "Generate AI Rewrite" above to generate a professional Telugu title and content using Gemini API.'
+                      : 'Save the draft first to enable automatic Gemini AI professional rewrite suggestions.'}
+                  </p>
+                )}
+              </div>
+
               {/* Title */}
               <div className="space-y-2">
                 <Label className="text-sm font-semibold">Title *</Label>

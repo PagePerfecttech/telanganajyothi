@@ -26,6 +26,7 @@ import {
   LogOut,
   ChevronLeft,
   Banknote,
+  Award,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -37,7 +38,8 @@ const navItems: { id: ViewType; label: string; icon: React.ElementType; section?
   { id: 'tags', label: 'Tags', icon: Tag },
   { id: 'locations', label: 'Locations', icon: MapPin, section: 'Management' },
   { id: 'ads', label: 'Ads Management', icon: Megaphone },
-  { id: 'reporters', label: 'Reporters', icon: Users },
+  { id: 'reporters', label: 'Reporters List', icon: Users },
+  { id: 'reporter-performance', label: 'Reporter Performance', icon: Award },
   { id: 'withdrawals', label: 'Withdrawals', icon: Banknote },
   { id: 'users', label: 'App Users', icon: Contact },
   { id: 'admins', label: 'Admin Users', icon: UserCog, section: 'System' },

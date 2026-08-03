@@ -164,12 +164,20 @@ model Reporter {
   mandalId           String?   @map("mandal_id")
   beat               String?
   status             String    @default("pending")
+  role               String    @default("junior")
   canPublishDirectly Boolean   @default(false) @map("can_publish_directly")
+  performanceScore   Int       @default(0) @map("performance_score")
+  approvedArticles   Int       @default(0) @map("approved_articles")
+  rejectedArticles   Int       @default(0) @map("rejected_articles")
+  fakeNewsCount      Int       @default(0) @map("fake_news_count")
+  warningCount       Int       @default(0) @map("warning_count")
+  promotionStatus    String    @default("none") @map("promotion_status")
+  coinsBalance       Int       @default(0) @map("coins_balance")
+  earningsBalance    Float     @default(0.0) @map("earnings_balance")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
   deletedAt          DateTime? @map("deleted_at")
   idProofUrl         String?   @map("id_proof_url")
-  coinsBalance       Int       @default(0) @map("coins_balance")
   news               News[]
   walletTransactions WalletTransaction[]
   withdrawalRequests WithdrawalRequest[]
@@ -255,6 +263,10 @@ model News {
   tags                 NewsTag[]
   youtubePublishStatus String?        @map("youtube_publish_status")
   youtubeVideoId       String?        @map("youtube_video_id")
+  aiTitle              String?        @map("ai_title")
+  aiShortDesc          String?        @map("ai_short_desc")
+  aiContent            String?        @map("ai_content")
+  aiStatus             String?        @default("none") @map("ai_status")
 
   @@index([status, deletedAt, publishedAt(sort: Desc)])
   @@index([status, deletedAt, categoryId, publishedAt(sort: Desc)])
