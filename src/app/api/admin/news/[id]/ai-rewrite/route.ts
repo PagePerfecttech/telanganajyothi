@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyAuth } from '@/lib/auth'
-import { generateAINewsRewrite } from '@/lib/gemini-service'
+import { generateAINewsRewrite } from '@/lib/openai-service'
 import { logAudit, getClientIp } from '@/lib/audit'
 
 export async function POST(
@@ -25,7 +25,7 @@ export async function POST(
     )
 
     if (!aiResult) {
-      return NextResponse.json({ error: 'Failed to generate AI rewrite. Please check your Gemini API key in Admin Settings.' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to generate AI rewrite. Please check your OpenAI / ChatGPT API key in Admin Settings.' }, { status: 500 })
     }
 
     const updatedNews = await db.news.update({

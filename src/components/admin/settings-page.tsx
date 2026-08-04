@@ -378,23 +378,26 @@ export default function SettingsPage() {
       <Card className="border-0 shadow-sm">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-600" /> Google Gemini AI Article Writing & Suggestions
+            <Sparkles className="h-5 w-5 text-green-600" /> OpenAI ChatGPT Article Writing & Suggestions
           </CardTitle>
           <CardDescription>
-            Configure Google Gemini API key to automatically rewrite reporter submissions into professional Telugu news articles with suggested change approval.
+            Configure OpenAI ChatGPT API key to automatically rewrite reporter submissions into professional Telugu news articles with suggested change approval.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label className="font-semibold text-sm text-gray-700">Gemini API Key</Label>
+            <Label className="font-semibold text-sm text-gray-700">OpenAI API Key (ChatGPT)</Label>
             <Input
               type="password"
-              value={settings.gemini_api_key || ''}
-              onChange={e => updateSetting('gemini_api_key', e.target.value)}
-              placeholder="AIzaSy..."
+              value={settings.openai_api_key || settings.gemini_api_key || ''}
+              onChange={e => {
+                updateSetting('openai_api_key', e.target.value)
+                updateSetting('gemini_api_key', e.target.value)
+              }}
+              placeholder="sk-proj-..."
             />
             <p className="text-xs text-muted-foreground">
-              Obtain your free API key from Google AI Studio (aistudio.google.com). Powers automatic professional Telugu headline & article rewrites.
+              Obtain your API key from OpenAI Platform (platform.openai.com). Powers automatic professional Telugu headline & article rewrites using GPT-4o.
             </p>
           </div>
         </CardContent>
