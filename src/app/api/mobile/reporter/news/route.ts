@@ -7,6 +7,7 @@ import { processNewsApprovalEarning } from '@/lib/wallet-service'
 import { generateAINewsRewrite } from '@/lib/gemini-service'
 
 import { applyWatermark } from '@/lib/watermark'
+import { generate5CharNewsId } from '@/lib/id-generator'
 
 async function uploadFileToR2(file: File, prefix: string): Promise<string> {
   const timestamp = Date.now()
@@ -156,7 +157,7 @@ export async function POST(request: NextRequest) {
     if (!isCrimeCategory) {
       const isSenior = reporter.role === 'senior' || reporter.canPublishDirectly
       const limitKey = isSenior ? 'limit_senior_daily' : 'limit_junior_daily'
-      const defaultLimit = isSenior ? 10 : 5
+      const defaultLimit = isSenior ? 30 : 15
       const setting = await db.setting.findUnique({ where: { key: limitKey } })
       const maxDailyLimit = setting ? parseInt(setting.value, 10) : defaultLimit
 
@@ -218,8 +219,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'System configuration error: No admins found' }, { status: 500 })
     }
 
+    const newsId = await generate5CharNewsId()
     const news = await db.news.create({
       data: {
+        id: newsId,
         title,
         shortDesc,
         categoryId,

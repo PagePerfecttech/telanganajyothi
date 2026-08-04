@@ -173,10 +173,21 @@ export default async function NewsPreviewPage({ params }: PageProps) {
             rel="noopener noreferrer"
             className="w-full py-3.5 bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-semibold rounded-2xl text-center shadow-md shadow-red-200 transition-all block duration-200"
           >
-            Download Telangana Jyothi App
+            యాప్‌లో చదవండి / డౌన్‌లోడ్ చేసుకోండి (Play Store)
           </a>
         </div>
       </div>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            if (/Android/i.test(navigator.userAgent)) {
+              setTimeout(function() {
+                window.location.href = "intent://m.telanganajyothi.in/p/${id}#Intent;scheme=https;package=com.telanganajyothi.shorts;end";
+              }, 400);
+            }
+          `
+        }}
+      />
       <p className="text-gray-400 text-xs mt-6">
         © {new Date().getFullYear()} Telangana Jyothi. All rights reserved.
       </p>

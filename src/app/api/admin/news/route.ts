@@ -4,6 +4,8 @@ import { verifyAuth } from '@/lib/auth'
 import { safeJsonParse, safeJsonStringify } from '@/lib/json-utils'
 import { messaging } from '@/lib/firebase-admin'
 
+import { generate5CharNewsId } from '@/lib/id-generator'
+
 export async function GET(request: NextRequest) {
   try {
     const admin = await verifyAuth(request)
@@ -84,8 +86,10 @@ export async function POST(request: NextRequest) {
       stateId = telangana?.id || ''
     }
 
+    const newsId = await generate5CharNewsId()
     const news = await db.news.create({
       data: {
+        id: newsId,
         title: data.title || '',
         shortDesc: data.shortDesc || null,
         content: data.content || null,
