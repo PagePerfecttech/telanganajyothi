@@ -168,12 +168,10 @@ export default async function NewsPreviewPage({ params }: PageProps) {
 
           {/* CTA Button */}
           <a
-            href="https://play.google.com/store/apps/details?id=com.telanganajyothi.shorts"
-            target="_blank"
-            rel="noopener noreferrer"
+            href={`intent://m.telanganajyothi.in/p/${id}#Intent;scheme=https;package=com.telanganajyothi.shorts;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.telanganajyothi.shorts;end`}
             className="w-full py-3.5 bg-[#D32F2F] hover:bg-[#B71C1C] text-white font-semibold rounded-2xl text-center shadow-md shadow-red-200 transition-all block duration-200"
           >
-            యాప్‌లో చదవండి / డౌన్‌లోడ్ చేసుకోండి (Play Store)
+            యాప్‌లో చదవండి / డౌన్‌లోడ్ చేసుకోండి (App / Play Store)
           </a>
         </div>
       </div>
@@ -182,8 +180,8 @@ export default async function NewsPreviewPage({ params }: PageProps) {
           __html: `
             if (/Android/i.test(navigator.userAgent)) {
               setTimeout(function() {
-                window.location.href = "intent://m.telanganajyothi.in/p/${id}#Intent;scheme=https;package=com.telanganajyothi.shorts;end";
-              }, 400);
+                window.location.href = "intent://m.telanganajyothi.in/p/${id}#Intent;scheme=https;package=com.telanganajyothi.shorts;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.telanganajyothi.shorts;end";
+              }, 300);
             }
           `
         }}
