@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { verifyFirebaseToken } from '@/lib/firebase-admin'
 import { safeJsonParse } from '@/lib/json-utils'
 import { rankAndMixArticles } from '@/lib/recommendation-engine'
+import { getCache, setCache, getFeedCacheHeaders } from '@/lib/cache'
 
 const feedQuerySchema = z.object({
   village_id: z.string().cuid().optional(),
@@ -146,12 +147,12 @@ export async function GET(request: NextRequest) {
 
     const offset = (page - 1) * limit;
 
-    // Fast In-Memory Cache Key for Page 1 requests (10s TTL)
+    // Fast Multi-Replica / In-Memory Cache Key for Page 1 requests (15s TTL)
     const cacheKey = page === 1 ? `feed_p1_${mandalId || ''}_${districtId || ''}_${stateId || ''}_${category || ''}` : null;
-    if (cacheKey && (global as any)._feedCache?.[cacheKey]) {
-      const cachedEntry = (global as any)._feedCache[cacheKey];
-      if (Date.now() < cachedEntry.expiresAt) {
-        return NextResponse.json(cachedEntry.data);
+    if (cacheKey) {
+      const cachedData = await getCache<any>(cacheKey);
+      if (cachedData) {
+        return NextResponse.json(cachedData, { headers: getFeedCacheHeaders(10, 30) });
       }
     }
 
@@ -219,11 +220,11 @@ export async function GET(request: NextRequest) {
 
     const responsePayload = { feed, total, page, limit };
     if (cacheKey) {
-      if (!(global as any)._feedCache) (global as any)._feedCache = {};
-      (global as any)._feedCache[cacheKey] = { data: responsePayload, expiresAt: Date.now() + 15000 };
+      await setCache(cacheKey, responsePayload, 15);
     }
 
-    return NextResponse.json(responsePayload)
+    return NextResponse.json(responsePayload, { headers: getFeedCacheHeaders(10, 30) })
+
   } catch (error) {
     console.error('Feed error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

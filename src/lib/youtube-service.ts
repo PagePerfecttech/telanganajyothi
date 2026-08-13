@@ -97,7 +97,11 @@ function downloadFile(url: string): Promise<string> {
         fetchUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}${url}`
     }
 
-    const tempPath = path.join(process.cwd(), 'upload', `temp_${uuidv4()}.mp4`)
+    const uploadDir = path.join(process.cwd(), 'upload')
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true })
+    }
+    const tempPath = path.join(uploadDir, `temp_${uuidv4()}.mp4`)
     const file = fs.createWriteStream(tempPath)
     
     httpModule.get(fetchUrl, (response: any) => {

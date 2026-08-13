@@ -19,16 +19,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
-    // Support both hashed passwords (new) and plaintext (legacy migration)
+    // Verify hashed password using bcrypt
     let passwordMatch = false
     if (admin.passwordHash.startsWith('$2a$') || admin.passwordHash.startsWith('$2b$')) {
-      // Hashed password
       passwordMatch = await bcrypt.compare(password, admin.passwordHash)
     } else {
-      // Legacy plaintext password (auto-migrate on next login)
+      // Legacy plaintext migration fallback - verify exact match then immediately rehash
       passwordMatch = admin.passwordHash === password
       if (passwordMatch) {
-        // Auto-migrate to hashed password
         const hashedPassword = await bcrypt.hash(password, 10)
         await db.admin.update({
           where: { id: admin.id },
