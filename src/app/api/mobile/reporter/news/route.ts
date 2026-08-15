@@ -8,6 +8,7 @@ import { generateAINewsRewrite } from '@/lib/gemini-service'
 
 import { applyWatermark } from '@/lib/watermark'
 import { generate5CharNewsId } from '@/lib/id-generator'
+import { findReporterFromToken } from '@/lib/reporter-utils'
 
 async function uploadFileToR2(file: File, prefix: string): Promise<string> {
   const timestamp = Date.now()
@@ -42,12 +43,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: e.message }, { status: 401 })
     }
 
-    const phone = decodedToken.phone_number;
-    if (!phone) {
-       return NextResponse.json({ error: 'Token missing phone number' }, { status: 401 })
-    }
-
-    const reporter = await db.reporter.findUnique({ where: { phone } })
+    const reporter = await findReporterFromToken(decodedToken);
     if (!reporter) {
       return NextResponse.json({ error: 'Not a reporter' }, { status: 403 })
     }
@@ -99,18 +95,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: e.message }, { status: 401 })
     }
 
-    const phone = decodedToken.phone_number;
-    if (!phone) {
-       return NextResponse.json({ error: 'Token missing phone number' }, { status: 401 })
-    }
-
     // Verify user is an active reporter
-    const reporter = await db.reporter.findUnique({ where: { phone } })
-    if (!reporter || reporter.status !== 'active') {
+    const reporter = await findReporterFromToken(decodedToken);
+    if (!reporter || reporter.status !== 'active' || reporter.deletedAt) {
       return NextResponse.json({ error: 'Not an active reporter' }, { status: 403 })
     }
 
-    let title, shortDesc, categoryId, stateId, districtId, thumbnailUrl, videoUrl, thumbnailBase64;
+    let title, shortDesc, categoryId, stateId, districtId, mandalId, thumbnailUrl, videoUrl, thumbnailBase64;
     
     const contentType = request.headers.get('content-type') || '';
     if (contentType.includes('multipart/form-data')) {
@@ -120,17 +111,18 @@ export async function POST(request: NextRequest) {
       categoryId = formData.get('categoryId') as string;
       stateId = formData.get('stateId') as string;
       districtId = formData.get('districtId') as string;
+      mandalId = formData.get('mandalId') as string;
       
-      const file = formData.get('file') as File | null;
-      if (file && file.size > 0) {
-         thumbnailUrl = await uploadFileToR2(file, 'reporter-thumb');
+      const file = formData.get('file');
+      if (file && typeof file === 'object' && 'size' in file && (file as File).size > 0) {
+         thumbnailUrl = await uploadFileToR2(file as File, 'reporter-thumb');
       } else {
          thumbnailUrl = formData.get('thumbnailUrl') as string | null;
       }
 
-      const videoFile = formData.get('videoFile') as File | null;
-      if (videoFile && videoFile.size > 0) {
-         videoUrl = await uploadFileToR2(videoFile, 'reporter-video');
+      const videoFile = formData.get('videoFile');
+      if (videoFile && typeof videoFile === 'object' && 'size' in videoFile && (videoFile as File).size > 0) {
+         videoUrl = await uploadFileToR2(videoFile as File, 'reporter-video');
       } else {
          videoUrl = formData.get('videoUrl') as string | null;
       }
@@ -141,6 +133,7 @@ export async function POST(request: NextRequest) {
       categoryId = data.categoryId;
       stateId = data.stateId;
       districtId = data.districtId;
+      mandalId = data.mandalId;
       thumbnailBase64 = data.thumbnailBase64;
       thumbnailUrl = data.thumbnailUrl;
       videoUrl = data.videoUrl;
@@ -179,9 +172,10 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Force the news location to match the reporter's allotted location
+    // Force the news location to match the reporter's allotted location if not provided
     stateId = reporter.stateId || stateId;
-    districtId = reporter.districtId || districtId;
+    districtId = districtId || reporter.districtId;
+    mandalId = mandalId || reporter.mandalId;
     
     if (!stateId) {
        return NextResponse.json({ error: 'Reporter location not configured' }, { status: 400 })
@@ -228,6 +222,7 @@ export async function POST(request: NextRequest) {
         categoryId,
         stateId,
         districtId: districtId || reporter.districtId,
+        mandalId: mandalId || reporter.mandalId || null,
         thumbnailUrl: thumbnailUrl || '',
         videoUrl,
         sourceType: 'reporter',

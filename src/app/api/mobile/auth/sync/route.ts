@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyFirebaseToken } from '@/lib/firebase-admin'
+import { findReporterFromToken } from '@/lib/reporter-utils'
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,8 +36,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if user is a reporter
-    const reporter = await db.reporter.findUnique({ where: { phone } });
+    // Check if user is an active reporter
+    const reporter = await findReporterFromToken(decodedToken);
     const isReporter = reporter && reporter.status === 'active' && !reporter.deletedAt;
 
     let role = 'user';

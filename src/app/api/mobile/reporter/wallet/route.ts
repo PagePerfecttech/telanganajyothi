@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyFirebaseToken } from '@/lib/firebase-admin'
+import { findReporterFromToken } from '@/lib/reporter-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,20 +10,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const token = authHeader.split('Bearer ')[1]
     let decodedToken;
     try {
       decodedToken = await verifyFirebaseToken(authHeader);
     } catch (e: any) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
-    if (!decodedToken || !decodedToken.phone_number) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
 
-    const reporter = await db.reporter.findUnique({
-      where: { phone: decodedToken.phone_number },
+    const reporter = await findReporterFromToken(decodedToken, {
       include: {
         walletTransactions: {
           orderBy: { createdAt: 'desc' },

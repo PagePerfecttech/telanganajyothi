@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { verifyFirebaseToken } from '@/lib/firebase-admin'
+import { findReporterFromToken } from '@/lib/reporter-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,12 +13,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: e.message }, { status: 401 })
     }
 
-    const phone = decodedToken.phone_number;
-    if (!phone) {
-       return NextResponse.json({ error: 'Token missing phone number' }, { status: 401 })
-    }
-
-    const reporter = await db.reporter.findUnique({ where: { phone } })
+    const reporter = await findReporterFromToken(decodedToken);
     if (!reporter) {
       return NextResponse.json({ error: 'Not a reporter' }, { status: 403 })
     }
