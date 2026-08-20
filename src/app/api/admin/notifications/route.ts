@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
           topic: 'all', // For now we send to a global topic 'all'
         }
         
-        if (notification.imageUrl) {
+        if (notification.imageUrl && notification.imageUrl.startsWith('http')) {
           messagePayload.notification.imageUrl = notification.imageUrl
         }
         

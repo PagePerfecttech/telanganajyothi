@@ -182,7 +182,7 @@ export async function GET(request: NextRequest) {
     const paginatedNews = rankedNews.slice(offset, offset + limit);
 
     // Get feed_inline ads
-    const ads = await db.customAd.findMany({
+    const inlineAds = await db.customAd.findMany({
       where: {
         placement: 'feed_inline',
         isActive: true,
@@ -193,15 +193,15 @@ export async function GET(request: NextRequest) {
       take: 3,
     })
 
-    const adFrequency = ads.length > 0 ? (ads[0].frequency || 5) : 5
+    const adFrequency = inlineAds.length > 0 ? (inlineAds[0].frequency || 5) : 5
 
     const feed = paginatedNews.map((item, index) => {
       const parsedImages = safeJsonParse<string[]>(item.imagesUrls, []);
       const thumbnail = item.thumbnailUrl || (parsedImages.length > 0 ? parsedImages[0] : '');
       const itemWithImages = { ...item, thumbnailUrl: thumbnail, imagesUrls: parsedImages };
 
-      if ((index + 1) % adFrequency === 0 && ads.length > 0) {
-        const ad = ads[index % ads.length]
+      if ((index + 1) % adFrequency === 0 && inlineAds.length > 0) {
+        const ad = inlineAds[index % inlineAds.length]
         return {
           type: 'ad',
           ad: {
@@ -217,6 +217,32 @@ export async function GET(request: NextRequest) {
         news: itemWithImages,
       }
     })
+
+    // Inject Home Banner carousel on the first page
+    if (page === 1) {
+      const carouselAds = await db.customAd.findMany({
+        where: {
+          placement: 'home_banner',
+          isActive: true,
+          deletedAt: null,
+          startDate: { lte: new Date() },
+          endDate: { gte: new Date() },
+        },
+        take: 6,
+      })
+
+      if (carouselAds.length > 0) {
+        feed.unshift({
+          type: 'ad_slider',
+          ads: carouselAds.map(ad => ({
+            ...ad,
+            imagesUrls: safeJsonParse<string[]>(ad.imagesUrls || '[]', []),
+            targetStateIds: safeJsonParse<string[]>(ad.targetStateIds || '[]', []),
+            targetCategoryIds: safeJsonParse<string[]>(ad.targetCategoryIds || '[]', []),
+          }))
+        } as any)
+      }
+    }
 
     const responsePayload = { feed, total, page, limit };
     if (cacheKey) {

@@ -241,6 +241,8 @@ model News {
   rejectReason String?        @map("reject_reason")
   publishedAt  DateTime?      @map("published_at")
   expiresAt    DateTime?      @map("expires_at")
+  scheduledAt  DateTime?      @map("scheduled_at")
+  externalLink String?        @map("external_link")
   isFeatured   Boolean        @default(false) @map("is_featured")
   viewsCount   Int            @default(0) @map("views_count")
   sharesCount  Int            @default(0) @map("shares_count")

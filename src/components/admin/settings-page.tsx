@@ -294,11 +294,11 @@ export default function SettingsPage() {
               <Label className="font-semibold text-sm text-gray-700">Junior Reporter Reward (₹ / article)</Label>
               <Input
                 type="number"
-                value={settings.reward_junior_article || '2'}
+                value={settings.reward_junior_article || '3'}
                 onChange={e => updateSetting('reward_junior_article', e.target.value)}
-                placeholder="2"
+                placeholder="3"
               />
-              <p className="text-xs text-muted-foreground">Default ₹2 per approved article</p>
+              <p className="text-xs text-muted-foreground">Default ₹3 per approved article</p>
             </div>
             <div className="space-y-2">
               <Label className="font-semibold text-sm text-gray-700">Senior Reporter Reward (₹ / article)</Label>
@@ -319,9 +319,9 @@ export default function SettingsPage() {
               <Label className="font-semibold text-sm text-gray-700">Junior Daily Approved Limit</Label>
               <Input
                 type="number"
-                value={settings.limit_junior_daily || '5'}
+                value={settings.limit_junior_daily || '3'}
                 onChange={e => updateSetting('limit_junior_daily', e.target.value)}
-                placeholder="5"
+                placeholder="3"
               />
               <p className="text-xs text-muted-foreground">Max news submissions per day for Junior Reporters (Crime exempt)</p>
             </div>
@@ -329,9 +329,9 @@ export default function SettingsPage() {
               <Label className="font-semibold text-sm text-gray-700">Senior Daily Approved Limit</Label>
               <Input
                 type="number"
-                value={settings.limit_senior_daily || '10'}
+                value={settings.limit_senior_daily || '4'}
                 onChange={e => updateSetting('limit_senior_daily', e.target.value)}
-                placeholder="10"
+                placeholder="4"
               />
               <p className="text-xs text-muted-foreground">Max news submissions per day for Senior Reporters (Crime exempt)</p>
             </div>

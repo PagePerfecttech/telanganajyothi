@@ -20,7 +20,7 @@ export async function processNewsApprovalEarning(newsId: string, isVideo: boolea
 
     // Calculate reward in Rupees (₹) based on reporter level
     const rewardKey = isSenior ? 'reward_senior_article' : 'reward_junior_article'
-    const defaultReward = isSenior ? 5 : 2
+    const defaultReward = isSenior ? 5 : 3
     const rewardAmount = await getSettingNumber(rewardKey, defaultReward)
 
     if (rewardAmount <= 0) return

@@ -429,6 +429,7 @@ function NewsFormPage({
     title: '', shortDesc: '', content: '', categoryId: '', stateId: '', districtId: '', mandalId: '',
     thumbnailUrl: '', imagesUrls: [] as string[], videoUrl: '', sourceType: 'original', reporterId: '',
     priority: 'normal', status: 'draft', isFeatured: false, sendNotification: true, tagIds: [] as string[],
+    externalLink: '', scheduledAt: '',
   })
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false)
   const [uploadingImages, setUploadingImages] = useState(false)
@@ -487,6 +488,8 @@ function NewsFormPage({
             isFeatured: data.isFeatured || false,
             sendNotification: data.sendNotification !== false,
             tagIds,
+            externalLink: data.externalLink || '',
+            scheduledAt: data.scheduledAt ? new Date(new Date(data.scheduledAt as string).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '',
           })
           setAiState({
             aiTitle: (data.aiTitle as string) || null,
@@ -729,6 +732,11 @@ function NewsFormPage({
     }
     if (!form.stateId) {
       toast.error('State is required')
+      return
+    }
+
+    if (form.status === 'scheduled' && !form.scheduledAt) {
+      toast.error('Scheduled Date & Time is required when status is scheduled')
       return
     }
 
@@ -1006,6 +1014,16 @@ function NewsFormPage({
                   placeholder="https://..."
                 />
               </div>
+
+              {/* External Link */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">External Link (optional)</Label>
+                <Input
+                  value={form.externalLink as string}
+                  onChange={(e) => updateField('externalLink', e.target.value)}
+                  placeholder="https://... (e.g. source link)"
+                />
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -1100,10 +1118,24 @@ function NewsFormPage({
                   <SelectContent>
                     <SelectItem value="draft">Draft</SelectItem>
                     <SelectItem value="pending_review">Submit for Review</SelectItem>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
                     <SelectItem value="published">Publish</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Scheduled At */}
+              {form.status === 'scheduled' && (
+                <div className="space-y-2 pt-2">
+                  <Label>Scheduled Date & Time *</Label>
+                  <Input 
+                    type="datetime-local" 
+                    value={form.scheduledAt as string} 
+                    onChange={(e) => updateField('scheduledAt', e.target.value)} 
+                  />
+                  <p className="text-xs text-muted-foreground">Select when the news should automatically be published.</p>
+                </div>
+              )}
 
               {/* Featured toggle */}
               <div className="flex items-center gap-3 pt-2">

@@ -97,6 +97,27 @@ export default function ReportersPage() {
     } catch { toast.error('Failed to save reporter') }
   }
 
+  const handleQuickAction = async (reporterId: string, action: 'approve' | 'suspend' | 'reject' | 'promote' | 'demote') => {
+    try {
+      const updates: any = {}
+      if (action === 'approve') updates.status = 'active'
+      if (action === 'suspend') updates.status = 'suspended'
+      if (action === 'reject') updates.status = 'rejected'
+      if (action === 'promote') updates.canPublishDirectly = true
+      if (action === 'demote') updates.canPublishDirectly = false
+
+      await authFetchJSON(`/api/admin/reporters/${reporterId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      })
+      toast.success(`Action '${action}' applied successfully`)
+      setViewModalItem(null)
+      fetchReporters()
+    } catch {
+      toast.error('Failed to apply action')
+    }
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this reporter?')) return
     try {
@@ -253,7 +274,22 @@ export default function ReportersPage() {
               </div>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="flex items-center justify-between sm:justify-between w-full">
+            {viewModalItem ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {viewModalItem.status !== 'active' && (
+                  <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleQuickAction(viewModalItem.id, 'approve')}>Approve Active</Button>
+                )}
+                {viewModalItem.status !== 'suspended' && (
+                  <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleQuickAction(viewModalItem.id, 'suspend')}>Suspend</Button>
+                )}
+                {!viewModalItem.canPublishDirectly ? (
+                  <Button size="sm" variant="secondary" className="bg-purple-100 text-purple-700 hover:bg-purple-200" onClick={() => handleQuickAction(viewModalItem.id, 'promote')}>Promote to Senior</Button>
+                ) : (
+                  <Button size="sm" variant="outline" className="text-orange-600" onClick={() => handleQuickAction(viewModalItem.id, 'demote')}>Demote to Junior</Button>
+                )}
+              </div>
+            ) : <div />}
             <Button onClick={() => setViewModalItem(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>

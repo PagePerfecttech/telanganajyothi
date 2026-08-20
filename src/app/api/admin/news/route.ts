@@ -105,6 +105,8 @@ export async function POST(request: NextRequest) {
         status: data.status || 'draft',
         isFeatured: data.isFeatured || false,
         publishedAt: data.status === 'published' ? new Date() : null,
+        scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : null,
+        externalLink: data.externalLink || null,
         expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
         createdBy: admin.id,
       },
@@ -133,32 +135,33 @@ export async function POST(request: NextRequest) {
 
     // Send push notification if published and requested
     if (news.status === 'published' && data.sendNotification !== false) {
-      try {
-        await messaging.send({
-          topic: news.districtId ? `district_${news.districtId}` : `state_${news.stateId}`,
-          notification: {
-            title: news.districtId ? 'New Update in Your District' : 'New Update in Your State',
-            body: news.title,
-            imageUrl: news.thumbnailUrl || undefined,
-          },
-          data: {
-            route: `/feed?newsId=${news.id}`,
-            newsId: news.id,
-          },
-          android: {
-            notification: {
-              sound: 'default',
-            }
-          },
-          apns: {
-            payload: {
-              aps: {
-                sound: 'default',
+          try {
+            const isValidUrl = news.thumbnailUrl && news.thumbnailUrl.startsWith('http')
+            await messaging.send({
+              topic: news.districtId ? `district_${news.districtId}` : `state_${news.stateId}`,
+              notification: {
+                title: news.districtId ? 'New Update in Your District' : 'New Update in Your State',
+                body: news.title,
+                imageUrl: isValidUrl ? news.thumbnailUrl : undefined,
+              },
+              data: {
+                route: `/feed?newsId=${news.id}`,
+                newsId: news.id,
+              },
+              android: {
+                notification: {
+                  sound: 'default',
+                }
+              },
+              apns: {
+                payload: {
+                  aps: {
+                    sound: 'default',
+                  }
+                }
               }
-            }
-          }
-        })
-      } catch (fcmError) {
+            })
+          } catch (fcmError) {
         console.error('Failed to send FCM notification:', fcmError)
       }
     }

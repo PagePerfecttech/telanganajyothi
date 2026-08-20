@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         stateId: data.stateId,
         districtId: data.districtId,
         assemblyId: data.assemblyId,
-        mandalId: data.mandalId,
+        mandalId: data.mandalId !== undefined ? data.mandalId : (data.districtId && data.districtId !== dbUser.districtId ? null : dbUser.mandalId),
         villageId: data.villageId,
         preferredLanguage: data.preferredLanguage,
         preferredCategories: data.preferredCategories ? safeJsonStringify(data.preferredCategories) : undefined,
@@ -83,10 +83,10 @@ export async function POST(request: NextRequest) {
         data: {
           name: data.name || existingReporter.name,
           email: data.email !== undefined ? data.email : existingReporter.email,
-          avatar: data.avatar !== undefined ? data.avatar : existingReporter.avatar,
+          avatar: data.avatar ? data.avatar : existingReporter.avatar,
           stateId: data.stateId || existingReporter.stateId,
           districtId: data.districtId || existingReporter.districtId,
-          mandalId: data.mandalId !== undefined ? data.mandalId : existingReporter.mandalId,
+          mandalId: data.mandalId !== undefined ? data.mandalId : (data.districtId && data.districtId !== existingReporter.districtId ? null : existingReporter.mandalId),
         }
       });
     }
