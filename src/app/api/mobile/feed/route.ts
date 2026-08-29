@@ -135,6 +135,7 @@ export async function GET(request: NextRequest) {
       district: { select: { name: true } },
       mandal: { select: { name: true } },
       reporter: { select: { name: true, avatar: true } },
+      admin: { select: { name: true, avatar: true } },
       tags: { select: { tag: { select: { name: true, slug: true } } } },
       sourceUrl: true,
       _count: {
@@ -182,41 +183,61 @@ export async function GET(request: NextRequest) {
     const paginatedNews = rankedNews.slice(offset, offset + limit);
 
     // Get feed_inline ads
+    const now = new Date();
     const inlineAds = await db.customAd.findMany({
       where: {
         placement: 'feed_inline',
         isActive: true,
         deletedAt: null,
-        startDate: { lte: new Date() },
-        endDate: { gte: new Date() },
+        OR: [
+          { startDate: null, endDate: null },
+          { startDate: { lte: now }, endDate: { gte: now } },
+          { startDate: { lte: now }, endDate: null }
+        ]
       },
-      take: 3,
-    })
+      take: 5,
+    });
 
-    const adFrequency = inlineAds.length > 0 ? (inlineAds[0].frequency || 5) : 5
+    const adFrequency = inlineAds.length > 0 ? (inlineAds[0].frequency || 4) : 4;
 
-    const feed = paginatedNews.map((item, index) => {
+    const feed: any[] = [];
+    paginatedNews.forEach((item, index) => {
       const parsedImages = safeJsonParse<string[]>(item.imagesUrls, []);
       const thumbnail = item.thumbnailUrl || (parsedImages.length > 0 ? parsedImages[0] : '');
-      const itemWithImages = { ...item, thumbnailUrl: thumbnail, imagesUrls: parsedImages };
+      const reporterObj = item.reporter || (item as any).admin || { name: 'Spot News Reporter', avatar: null };
+      const itemWithImages = {
+        ...item,
+        reporter: reporterObj,
+        reporter_name: reporterObj.name || 'Spot News Reporter',
+        reporter_image: reporterObj.avatar || '',
+        thumbnailUrl: thumbnail,
+        imagesUrls: parsedImages,
+      };
 
-      if ((index + 1) % adFrequency === 0 && inlineAds.length > 0) {
-        const ad = inlineAds[index % inlineAds.length]
-        return {
-          type: 'ad',
-          ad: {
-            ...ad,
-            imagesUrls: safeJsonParse<string[]>(ad.imagesUrls || '[]', []),
-            targetStateIds: safeJsonParse<string[]>(ad.targetStateIds || '[]', []),
-            targetCategoryIds: safeJsonParse<string[]>(ad.targetCategoryIds || '[]', []),
-          },
-        }
-      }
-      return {
+      feed.push({
         type: 'news',
         news: itemWithImages,
+      });
+
+      if ((index + 1) % adFrequency === 0) {
+        if (inlineAds.length > 0 && index % 2 === 0) {
+          const ad = inlineAds[Math.floor(index / adFrequency) % inlineAds.length];
+          feed.push({
+            type: 'ad',
+            ad: {
+              ...ad,
+              imagesUrls: safeJsonParse<string[]>(ad.imagesUrls || '[]', []),
+              targetStateIds: safeJsonParse<string[]>(ad.targetStateIds || '[]', []),
+              targetCategoryIds: safeJsonParse<string[]>(ad.targetCategoryIds || '[]', []),
+            },
+          });
+        } else {
+          feed.push({
+            type: 'admob_native',
+          });
+        }
       }
-    })
+    });
 
     // Inject Home Banner carousel on the first page
     if (page === 1) {
@@ -225,11 +246,14 @@ export async function GET(request: NextRequest) {
           placement: 'home_banner',
           isActive: true,
           deletedAt: null,
-          startDate: { lte: new Date() },
-          endDate: { gte: new Date() },
+          OR: [
+            { startDate: null, endDate: null },
+            { startDate: { lte: now }, endDate: { gte: now } },
+            { startDate: { lte: now }, endDate: null }
+          ]
         },
         take: 6,
-      })
+      });
 
       if (carouselAds.length > 0) {
         feed.unshift({
@@ -240,7 +264,7 @@ export async function GET(request: NextRequest) {
             targetStateIds: safeJsonParse<string[]>(ad.targetStateIds || '[]', []),
             targetCategoryIds: safeJsonParse<string[]>(ad.targetCategoryIds || '[]', []),
           }))
-        } as any)
+        } as any);
       }
     }
 
@@ -249,7 +273,7 @@ export async function GET(request: NextRequest) {
       await setCache(cacheKey, responsePayload, 15);
     }
 
-    return NextResponse.json(responsePayload, { headers: getFeedCacheHeaders(10, 30) })
+    return NextResponse.json(responsePayload, { headers: getFeedCacheHeaders(10, 30) });
 
   } catch (error) {
     console.error('Feed error:', error)
