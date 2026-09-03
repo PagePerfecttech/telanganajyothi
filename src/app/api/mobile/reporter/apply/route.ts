@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     // Check if already applied
     let reporter = await db.reporter.findUnique({ where: { phone } })
     if (reporter) {
-      return NextResponse.json({ error: 'Already applied' }, { status: 400 })
+      return NextResponse.json({ message: 'Already registered as a reporter', reporter }, { status: 200 })
     }
 
     // Upload base64 images to R2

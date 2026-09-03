@@ -25,7 +25,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://m.telanganajyothi.in' // Replace with your actual domain
+  const images: string[] = safeJsonParse<string[]>(news.imagesUrls, [])
+  const imageUrl = news.thumbnailUrl || (images.length > 0 ? images[0] : `${baseUrl}/spotnewslogo.png`)
 
   return {
     title: news.title,
@@ -36,11 +37,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description: news.shortDesc || '',
       type: 'article',
       siteName: 'Telangana Jyothi',
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: news.title,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: news.title,
       description: news.shortDesc || '',
+      images: [imageUrl],
     }
   }
 }

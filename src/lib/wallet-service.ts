@@ -18,6 +18,24 @@ export async function processNewsApprovalEarning(newsId: string, isVideo: boolea
     })
     if (existingTransaction) return
 
+    // Check daily coin reward limit based on rank (Junior: max 5/day, Senior: max 10/day)
+    const startOfDay = new Date()
+    startOfDay.setHours(0, 0, 0, 0)
+
+    const todayRewardsCount = await db.walletTransaction.count({
+      where: {
+        reporterId: news.reporterId,
+        type: 'CREDIT',
+        createdAt: { gte: startOfDay }
+      }
+    })
+
+    const maxDailyLimit = isSenior ? 10 : 5
+    if (todayRewardsCount >= maxDailyLimit) {
+      console.log(`Daily reward limit of ${maxDailyLimit} reached for reporter ${news.reporterId}`)
+      return
+    }
+
     // Calculate reward in Rupees (₹) based on reporter level
     const rewardKey = isSenior ? 'reward_senior_article' : 'reward_junior_article'
     const defaultReward = isSenior ? 5 : 3

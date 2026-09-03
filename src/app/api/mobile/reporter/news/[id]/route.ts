@@ -64,19 +64,42 @@ export async function PUT(
       return NextResponse.json({ error: 'News article not found' }, { status: 404 })
     }
 
-    const data = await request.json()
+    let title, shortDesc, categoryId, districtId, mandalId, thumbnailUrl, videoUrl, customLink;
+    const contentType = request.headers.get('content-type') || '';
+
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      title = formData.get('title') as string;
+      shortDesc = formData.get('shortDesc') as string;
+      categoryId = formData.get('categoryId') as string;
+      districtId = formData.get('districtId') as string;
+      mandalId = formData.get('mandalId') as string;
+      customLink = formData.get('customLink') as string;
+      thumbnailUrl = formData.get('thumbnailUrl') as string;
+      videoUrl = formData.get('videoUrl') as string;
+    } else {
+      const data = await request.json();
+      title = data.title;
+      shortDesc = data.shortDesc;
+      categoryId = data.categoryId;
+      districtId = data.districtId;
+      mandalId = data.mandalId;
+      customLink = data.customLink || data.sourceUrl;
+      thumbnailUrl = data.thumbnailUrl;
+      videoUrl = data.videoUrl;
+    }
 
     const updatedNews = await db.news.update({
       where: { id: existingNews.id },
       data: {
-        title: data.title || existingNews.title,
-        shortDesc: data.shortDesc !== undefined ? data.shortDesc : existingNews.shortDesc,
-        categoryId: data.categoryId || existingNews.categoryId,
-        districtId: data.districtId || existingNews.districtId,
-        mandalId: data.mandalId !== undefined ? data.mandalId : existingNews.mandalId,
-        thumbnailUrl: data.thumbnailUrl || existingNews.thumbnailUrl,
-        videoUrl: data.videoUrl !== undefined ? data.videoUrl : existingNews.videoUrl,
-        sourceUrl: data.customLink || data.sourceUrl || existingNews.sourceUrl,
+        title: title || existingNews.title,
+        shortDesc: shortDesc !== undefined ? shortDesc : existingNews.shortDesc,
+        categoryId: categoryId || existingNews.categoryId,
+        districtId: districtId || existingNews.districtId,
+        mandalId: mandalId !== undefined ? mandalId : existingNews.mandalId,
+        thumbnailUrl: thumbnailUrl || existingNews.thumbnailUrl,
+        videoUrl: videoUrl !== undefined ? videoUrl : existingNews.videoUrl,
+        sourceUrl: customLink || existingNews.sourceUrl,
         status: reporter.canPublishDirectly ? 'published' : 'pending_review',
       }
     })
