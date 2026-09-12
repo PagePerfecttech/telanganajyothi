@@ -25,6 +25,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://telanganajyothi.com'
   const images: string[] = safeJsonParse<string[]>(news.imagesUrls, [])
   const imageUrl = news.thumbnailUrl || (images.length > 0 ? images[0] : `${baseUrl}/spotnewslogo.png`)
 
